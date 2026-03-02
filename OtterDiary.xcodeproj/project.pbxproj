@@ -1,0 +1,475 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2DC88CBFFD9D5DDCEDD70662 /* OnThisDayService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D586C79C0B15AFD785D8580 /* OnThisDayService.swift */; };
+		5DCB08459A893745165A6440 /* DiaryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF81A39A74CC381E23328F8D /* DiaryEntry.swift */; };
+		794FE949494C00EA84F92084 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51A06D9689C6B311183F6B6C /* HomeView.swift */; };
+		8282F013CC391D27546CFDAA /* OtterDiaryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410F2E6711201D02C154C6EA /* OtterDiaryApp.swift */; };
+		93AD2DCCEC6F5BDF9EB7A7AB /* OnThisDayServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47859595745CEF63B097CDE6 /* OnThisDayServiceTests.swift */; };
+		98EE61212CECC691C276641F /* DiaryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A09787E7DA49D98E0CC1BB0E /* DiaryViewModel.swift */; };
+		C01F00FFFDDA9A81312879DA /* OnThisDayListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F064B8F4E0E8E77AF0F8D5 /* OnThisDayListView.swift */; };
+		CC670F204131BE7BDC71384D /* NewEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36C3734A64F01F2FF9EB1DE0 /* NewEntryView.swift */; };
+		E18C7CB97AF214C37E9023D0 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29320250BE588D0F787DED6 /* ExportService.swift */; };
+		FCAC8641D872EE6A0A9A577C /* DiaryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82DE52D51FF2E5433D826667 /* DiaryStore.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		635D4B4C8B30E28E8A0DA6A4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D6C513DB8378C5A5461FFEB6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 85D9D879FFDF514AD0DA139C;
+			remoteInfo = OtterDiary;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		03380FEDE351B21961B7E7E0 /* OtterDiaryTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OtterDiaryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1D586C79C0B15AFD785D8580 /* OnThisDayService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnThisDayService.swift; sourceTree = "<group>"; };
+		36C3734A64F01F2FF9EB1DE0 /* NewEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewEntryView.swift; sourceTree = "<group>"; };
+		410F2E6711201D02C154C6EA /* OtterDiaryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtterDiaryApp.swift; sourceTree = "<group>"; };
+		46F064B8F4E0E8E77AF0F8D5 /* OnThisDayListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnThisDayListView.swift; sourceTree = "<group>"; };
+		47859595745CEF63B097CDE6 /* OnThisDayServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnThisDayServiceTests.swift; sourceTree = "<group>"; };
+		51A06D9689C6B311183F6B6C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		582250C4CA6F3AA052568E2F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		82DE52D51FF2E5433D826667 /* DiaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryStore.swift; sourceTree = "<group>"; };
+		8EFF77C2B9B264F6398A9E9D /* OtterDiary.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OtterDiary.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A09787E7DA49D98E0CC1BB0E /* DiaryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryViewModel.swift; sourceTree = "<group>"; };
+		C29320250BE588D0F787DED6 /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
+		CF81A39A74CC381E23328F8D /* DiaryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryEntry.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		11523E09716852D062502E83 = {
+			isa = PBXGroup;
+			children = (
+				1BFE130A4BB2F02DAC26567C /* OtterDiary */,
+				C2442963738104DD426D9065 /* OtterDiaryTests */,
+				8EF54400903B1ACCF1160A44 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		1B5515A814D5A9BC302C21B5 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				82DE52D51FF2E5433D826667 /* DiaryStore.swift */,
+				C29320250BE588D0F787DED6 /* ExportService.swift */,
+				1D586C79C0B15AFD785D8580 /* OnThisDayService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		1BFE130A4BB2F02DAC26567C /* OtterDiary */ = {
+			isa = PBXGroup;
+			children = (
+				4A2FCAD66D0A524211095E41 /* App */,
+				97EF6DE89E3E365A44A05AA4 /* Models */,
+				E6CA71AF0BC3C197E31FE6C7 /* Resources */,
+				1B5515A814D5A9BC302C21B5 /* Services */,
+				694620D56001366C4CBD0A1F /* ViewModels */,
+				236246E02690EE2D9B63F689 /* Views */,
+			);
+			path = OtterDiary;
+			sourceTree = "<group>";
+		};
+		236246E02690EE2D9B63F689 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				51A06D9689C6B311183F6B6C /* HomeView.swift */,
+				36C3734A64F01F2FF9EB1DE0 /* NewEntryView.swift */,
+				46F064B8F4E0E8E77AF0F8D5 /* OnThisDayListView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		4A2FCAD66D0A524211095E41 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				410F2E6711201D02C154C6EA /* OtterDiaryApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		694620D56001366C4CBD0A1F /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				A09787E7DA49D98E0CC1BB0E /* DiaryViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		8EF54400903B1ACCF1160A44 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8EFF77C2B9B264F6398A9E9D /* OtterDiary.app */,
+				03380FEDE351B21961B7E7E0 /* OtterDiaryTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		97EF6DE89E3E365A44A05AA4 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				CF81A39A74CC381E23328F8D /* DiaryEntry.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		C2442963738104DD426D9065 /* OtterDiaryTests */ = {
+			isa = PBXGroup;
+			children = (
+				47859595745CEF63B097CDE6 /* OnThisDayServiceTests.swift */,
+			);
+			path = OtterDiaryTests;
+			sourceTree = "<group>";
+		};
+		E6CA71AF0BC3C197E31FE6C7 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				582250C4CA6F3AA052568E2F /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		6951C840DADB63D1218523C6 /* OtterDiaryTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ADFC4DD9004B8C9413592E72 /* Build configuration list for PBXNativeTarget "OtterDiaryTests" */;
+			buildPhases = (
+				7C88C95A5BB576B31F6FDA47 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				08E2F1957B5AB1FEC63C1EE2 /* PBXTargetDependency */,
+			);
+			name = OtterDiaryTests;
+			packageProductDependencies = (
+			);
+			productName = OtterDiaryTests;
+			productReference = 03380FEDE351B21961B7E7E0 /* OtterDiaryTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		85D9D879FFDF514AD0DA139C /* OtterDiary */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1B23F31614F8FDDAB6F2B3D6 /* Build configuration list for PBXNativeTarget "OtterDiary" */;
+			buildPhases = (
+				214222AFFAFA0B93432C5816 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OtterDiary;
+			packageProductDependencies = (
+			);
+			productName = OtterDiary;
+			productReference = 8EFF77C2B9B264F6398A9E9D /* OtterDiary.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D6C513DB8378C5A5461FFEB6 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					6951C840DADB63D1218523C6 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					85D9D879FFDF514AD0DA139C = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 946A8F0FE9B6E8A29132EF9D /* Build configuration list for PBXProject "OtterDiary" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 11523E09716852D062502E83;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				85D9D879FFDF514AD0DA139C /* OtterDiary */,
+				6951C840DADB63D1218523C6 /* OtterDiaryTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		214222AFFAFA0B93432C5816 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5DCB08459A893745165A6440 /* DiaryEntry.swift in Sources */,
+				FCAC8641D872EE6A0A9A577C /* DiaryStore.swift in Sources */,
+				98EE61212CECC691C276641F /* DiaryViewModel.swift in Sources */,
+				E18C7CB97AF214C37E9023D0 /* ExportService.swift in Sources */,
+				794FE949494C00EA84F92084 /* HomeView.swift in Sources */,
+				CC670F204131BE7BDC71384D /* NewEntryView.swift in Sources */,
+				C01F00FFFDDA9A81312879DA /* OnThisDayListView.swift in Sources */,
+				2DC88CBFFD9D5DDCEDD70662 /* OnThisDayService.swift in Sources */,
+				8282F013CC391D27546CFDAA /* OtterDiaryApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7C88C95A5BB576B31F6FDA47 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				93AD2DCCEC6F5BDF9EB7A7AB /* OnThisDayServiceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		08E2F1957B5AB1FEC63C1EE2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 85D9D879FFDF514AD0DA139C /* OtterDiary */;
+			targetProxy = 635D4B4C8B30E28E8A0DA6A4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0443FD06E9615964011CE03D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bunnyxxmi.otterdiary;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.1;
+			};
+			name = Release;
+		};
+		10F231860BFA6FE45B8A5516 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bunnyxxmi.otterdiary.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OtterDiary.app/OtterDiary";
+			};
+			name = Debug;
+		};
+		1402EC048CE272992F11CA3B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bunnyxxmi.otterdiary;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.1;
+			};
+			name = Debug;
+		};
+		1C39F77E9FF546F203D047D1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bunnyxxmi.otterdiary.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OtterDiary.app/OtterDiary";
+			};
+			name = Release;
+		};
+		A61254ECF4D19400AF75C08B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = OtterDiary/Resources/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		C76E5C917AAF2A7E7E40C2B6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = OtterDiary/Resources/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1B23F31614F8FDDAB6F2B3D6 /* Build configuration list for PBXNativeTarget "OtterDiary" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C76E5C917AAF2A7E7E40C2B6 /* Debug */,
+				A61254ECF4D19400AF75C08B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		946A8F0FE9B6E8A29132EF9D /* Build configuration list for PBXProject "OtterDiary" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1402EC048CE272992F11CA3B /* Debug */,
+				0443FD06E9615964011CE03D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		ADFC4DD9004B8C9413592E72 /* Build configuration list for PBXNativeTarget "OtterDiaryTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				10F231860BFA6FE45B8A5516 /* Debug */,
+				1C39F77E9FF546F203D047D1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D6C513DB8378C5A5461FFEB6 /* Project object */;
+}
