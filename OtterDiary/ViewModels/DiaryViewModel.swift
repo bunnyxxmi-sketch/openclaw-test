@@ -44,4 +44,40 @@ final class DiaryViewModel: ObservableObject {
     var onThisDayEntries: [DiaryEntry] {
         onThisDayService.entriesForOnThisDay(from: visibleEntries)
     }
+
+    var lastYearOnThisDayEntries: [DiaryEntry] {
+        onThisDayService.entriesForYearOffsetOnThisDay(from: visibleEntries, yearOffset: 1)
+    }
+
+    var recentFiveYearOnThisDayEntries: [DiaryEntry] {
+        onThisDayService.entriesForRecentYearsOnThisDay(from: visibleEntries, years: 5)
+    }
+
+    var allImageURLs: [URL] {
+        var seen = Set<URL>()
+        var urls: [URL] = []
+
+        for entry in visibleEntries {
+            for url in extractImageURLs(from: entry.content) where !seen.contains(url) {
+                seen.insert(url)
+                urls.append(url)
+            }
+        }
+
+        return urls
+    }
+
+    private func extractImageURLs(from text: String) -> [URL] {
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return []
+        }
+
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return detector.matches(in: text, options: [], range: range)
+            .compactMap { $0.url }
+            .filter { url in
+                let ext = url.pathExtension.lowercased()
+                return ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"].contains(ext)
+            }
+    }
 }
