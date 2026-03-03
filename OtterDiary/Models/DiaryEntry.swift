@@ -21,6 +21,7 @@ struct DiaryEntry: Identifiable, Codable, Hashable {
     var emoji: String?
     var location: String?
     var weather: String?
+    var tags: [String]
     var imageAssetPaths: [String]
     var isDeleted: Bool
 
@@ -35,6 +36,7 @@ struct DiaryEntry: Identifiable, Codable, Hashable {
         emoji: String? = nil,
         location: String? = nil,
         weather: String? = nil,
+        tags: [String] = [],
         imageAssetPaths: [String] = [],
         isDeleted: Bool = false
     ) {
@@ -48,7 +50,32 @@ struct DiaryEntry: Identifiable, Codable, Hashable {
         self.emoji = emoji
         self.location = location
         self.weather = weather
+        self.tags = tags
         self.imageAssetPaths = imageAssetPaths
         self.isDeleted = isDeleted
+    }
+}
+
+
+extension DiaryEntry {
+    enum CodingKeys: String, CodingKey {
+        case id, createdAt, updatedAt, entryDate, title, content, mood, emoji, location, weather, tags, imageAssetPaths, isDeleted
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        entryDate = try c.decode(Date.self, forKey: .entryDate)
+        title = try c.decode(String.self, forKey: .title)
+        content = try c.decode(String.self, forKey: .content)
+        mood = try c.decodeIfPresent(Mood.self, forKey: .mood)
+        emoji = try c.decodeIfPresent(String.self, forKey: .emoji)
+        location = try c.decodeIfPresent(String.self, forKey: .location)
+        weather = try c.decodeIfPresent(String.self, forKey: .weather)
+        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
+        imageAssetPaths = try c.decodeIfPresent([String].self, forKey: .imageAssetPaths) ?? []
+        isDeleted = try c.decodeIfPresent(Bool.self, forKey: .isDeleted) ?? false
     }
 }

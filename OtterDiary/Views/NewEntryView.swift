@@ -20,7 +20,7 @@ struct NewEntryView: View {
     @AppStorage("draft_content") private var draftContent: String = ""
     @AppStorage("draft_timestamp") private var draftTimestamp: Double = 0
 
-    let onSave: (_ title: String, _ content: String, _ date: Date, _ mood: Mood?, _ emoji: String?, _ imageAssetPaths: [String]) -> Void
+    let onSave: (_ title: String, _ content: String, _ date: Date, _ mood: Mood?, _ emoji: String?, _ tags: [String], _ imageAssetPaths: [String]) -> Void
 
     private let emojiOptions = ["😀","😌","🥳","😴","😢","🤩","🔥","🌧️","📚","☕️"]
 
@@ -210,7 +210,7 @@ struct NewEntryView: View {
             }
             Spacer()
             Button {
-                onSave(title, content, date, mood, selectedEmoji, imageAssetPaths)
+                onSave(title, content, date, mood, selectedEmoji, tags, imageAssetPaths)
                 clearDraft()
                 dismiss()
             } label: {

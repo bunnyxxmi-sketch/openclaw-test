@@ -24,7 +24,7 @@ final class DiaryViewModel: ObservableObject {
         }
     }
 
-    func addEntry(title: String, content: String, date: Date, mood: Mood?, emoji: String?, location: String? = nil, weather: String? = nil, imageAssetPaths: [String]) {
+    func addEntry(title: String, content: String, date: Date, mood: Mood?, emoji: String?, tags: [String] = [], location: String? = nil, weather: String? = nil, imageAssetPaths: [String]) {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -36,6 +36,7 @@ final class DiaryViewModel: ObservableObject {
             emoji: emoji,
             location: location?.trimmingCharacters(in: .whitespacesAndNewlines),
             weather: weather?.trimmingCharacters(in: .whitespacesAndNewlines),
+            tags: tags,
             imageAssetPaths: imageAssetPaths
         )
         entries.insert(entry, at: 0)
@@ -49,7 +50,7 @@ final class DiaryViewModel: ObservableObject {
         persist()
     }
 
-    func updateEntry(id: UUID, title: String, content: String, date: Date, mood: Mood?, emoji: String?, location: String? = nil, weather: String? = nil, imageAssetPaths: [String]) {
+    func updateEntry(id: UUID, title: String, content: String, date: Date, mood: Mood?, emoji: String?, tags: [String] = [], location: String? = nil, weather: String? = nil, imageAssetPaths: [String]) {
         guard let i = entries.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -61,6 +62,7 @@ final class DiaryViewModel: ObservableObject {
         entries[i].emoji = emoji
         entries[i].location = location?.trimmingCharacters(in: .whitespacesAndNewlines)
         entries[i].weather = weather?.trimmingCharacters(in: .whitespacesAndNewlines)
+        entries[i].tags = tags
         entries[i].imageAssetPaths = imageAssetPaths
         entries[i].updatedAt = .now
         persist()

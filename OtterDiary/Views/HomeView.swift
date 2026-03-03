@@ -53,8 +53,8 @@ struct HomeView: View {
         .animation(DiaryStyle.Motion.selectionSpring, value: selectedDiaryTab)
         .sheet(isPresented: $showingNewEntry) {
             NavigationStack {
-                NewEntryView { title, content, date, mood, emoji, imageAssetPaths in
-                    viewModel.addEntry(title: title, content: content, date: date, mood: mood, emoji: emoji, imageAssetPaths: imageAssetPaths)
+                NewEntryView { title, content, date, mood, emoji, tags, imageAssetPaths in
+                    viewModel.addEntry(title: title, content: content, date: date, mood: mood, emoji: emoji, tags: tags, imageAssetPaths: imageAssetPaths)
                     selectedBottomTab = .diary
                     selectedDiaryTab = .timeline
                     timelineTopToken = UUID()
@@ -65,8 +65,8 @@ struct HomeView: View {
         }
         .sheet(item: $editingEntry) { entry in
             NavigationStack {
-                EditEntryView(entry: entry) { title, content, date, mood, emoji, location, weather, imageAssetPaths in
-                    viewModel.updateEntry(id: entry.id, title: title, content: content, date: date, mood: mood, emoji: emoji, location: location, weather: weather, imageAssetPaths: imageAssetPaths)
+                EditEntryView(entry: entry) { title, content, date, mood, emoji, tags, location, weather, imageAssetPaths in
+                    viewModel.updateEntry(id: entry.id, title: title, content: content, date: date, mood: mood, emoji: emoji, tags: tags, location: location, weather: weather, imageAssetPaths: imageAssetPaths)
                 }
             }
             .presentationDetents([.large])
@@ -154,30 +154,40 @@ struct HomeView: View {
             DiarySecondaryTabs(selected: $selectedDiaryTab)
                 .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
 
+            TabView(selection: $selectedDiaryTab) {
+                diaryPageContent(for: .onThisDay)
+                    .tag(DiaryTab.onThisDay)
+                diaryPageContent(for: .timeline)
+                    .tag(DiaryTab.timeline)
+                diaryPageContent(for: .life)
+                    .tag(DiaryTab.life)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(DiaryStyle.Motion.selectionSpring, value: selectedDiaryTab)
+        }
+    }
+
+    @ViewBuilder
+    private func diaryPageContent(for tab: DiaryTab) -> some View {
+        if tab == .timeline {
             ScrollViewReader { proxy in
                 ScrollView {
                     GeometryReader { g in
                         Color.clear
-                            .preference(key: ScrollOffsetPreferenceKey.self, value: g.frame(in: .named("diaryScroll")).minY)
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: g.frame(in: .named("timelineScroll")).minY)
                     }
                     .frame(height: 0)
 
                     Color.clear.frame(height: 1).id(timelineTopToken)
 
                     VStack(spacing: DiaryStyle.Spacing.sectionGap) {
-                        if selectedDiaryTab == .timeline {
-                            timelineSection
-                        } else if selectedDiaryTab == .onThisDay {
-                            onThisDayContent
-                        } else {
-                            lifeLineContent
-                        }
+                        timelineSection
                     }
                     .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
                     .padding(.top, DiaryStyle.Spacing.contentTop)
                     .padding(.bottom, DiaryStyle.Spacing.bottomSafe)
                 }
-                .coordinateSpace(name: "diaryScroll")
+                .coordinateSpace(name: "timelineScroll")
                 .scrollIndicators(.hidden)
                 .scrollBounceBehavior(.basedOnSize)
                 .onPreferenceChange(ScrollOffsetPreferenceKey.self, perform: handleScroll)
@@ -185,6 +195,22 @@ struct HomeView: View {
                     withAnimation(.easeInOut(duration: 0.28)) { proxy.scrollTo(timelineTopToken, anchor: .top) }
                 }
             }
+        } else {
+            ScrollView {
+                VStack(spacing: DiaryStyle.Spacing.sectionGap) {
+                    if tab == .onThisDay {
+                        onThisDayContent
+                    } else {
+                        lifeLineContent
+                    }
+                }
+                .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
+                .padding(.top, DiaryStyle.Spacing.contentTop)
+                .padding(.bottom, DiaryStyle.Spacing.bottomSafe)
+            }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+            .onAppear { fabVisible = true }
         }
     }
 
@@ -386,9 +412,41 @@ struct DiaryEntryDetailView: View {
                 Text(entry.entryDate.formatted(.dateTime.year().month(.wide).day().weekday(.wide).hour().minute()))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                if let emoji = entry.emoji, !emoji.isEmpty {
-                    Text(emoji).font(.system(size: 28))
+
+                if !entry.displayTags.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("标签")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 8)], alignment: .leading, spacing: 8) {
+                            ForEach(entry.displayTags, id: \.self) { tag in
+                                Text("#\(tag)")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 7)
+                                    .background(DiaryColor.controlBackground)
+                                    .clipShape(Capsule())
+                                    .overlay(Capsule().stroke(DiaryColor.strokeStrong, lineWidth: 1))
+                            }
+                        }
+                    }
                 }
+
+                if let emoji = entry.reactionEmoji {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("心情")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(emoji)
+                            .font(.system(size: 28))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(DiaryColor.controlBackground))
+                            .overlay(Capsule().stroke(DiaryColor.strokeStrong, lineWidth: 1))
+                    }
+                }
+
                 Text(entry.content)
                     .font(.body)
                     .lineSpacing(4)
@@ -932,24 +990,27 @@ struct LifeYearSection: View {
 struct EditEntryView: View {
     @Environment(\.dismiss) private var dismiss
     let entry: DiaryEntry
-    let onSave: (String, String, Date, Mood?, String?, String?, String?, [String]) -> Void
+    let onSave: (String, String, Date, Mood?, String?, [String], String?, String?, [String]) -> Void
 
     @State private var title: String
     @State private var content: String
     @State private var date: Date
     @State private var emoji: String?
+    @State private var tags: [String]
+    @State private var newTagText: String = ""
     @State private var location: String
     @State private var weather: String
     @State private var imageAssetPaths: [String]
     @State private var pickedPhotoItem: PhotosPickerItem?
 
-    init(entry: DiaryEntry, onSave: @escaping (String, String, Date, Mood?, String?, String?, String?, [String]) -> Void) {
+    init(entry: DiaryEntry, onSave: @escaping (String, String, Date, Mood?, String?, [String], String?, String?, [String]) -> Void) {
         self.entry = entry
         self.onSave = onSave
         _title = State(initialValue: entry.title)
         _content = State(initialValue: entry.content)
         _date = State(initialValue: entry.entryDate)
         _emoji = State(initialValue: entry.emoji)
+        _tags = State(initialValue: entry.tags)
         _location = State(initialValue: entry.location ?? "")
         _weather = State(initialValue: entry.weather ?? "")
         _imageAssetPaths = State(initialValue: entry.imageAssetPaths)
@@ -962,6 +1023,33 @@ struct EditEntryView: View {
             Section("内容") { TextEditor(text: $content).frame(minHeight: 180) }
             Section("表情") {
                 TextField("emoji", text: Binding(get: { emoji ?? "" }, set: { emoji = $0.isEmpty ? nil : $0 }))
+            }
+            Section("标签") {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(tags, id: \.self) { tag in
+                            Button {
+                                tags.removeAll { $0 == tag }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Text("#\(tag)")
+                                    Image(systemName: "xmark")
+                                        .font(.caption2.weight(.bold))
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                }
+                TextField("添加标签（如 #学习）", text: $newTagText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .onSubmit {
+                        let cleaned = newTagText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+                        guard !cleaned.isEmpty else { return }
+                        if !tags.contains(cleaned) { tags.append(cleaned) }
+                        newTagText = ""
+                    }
             }
             Section("地点与天气") {
                 TextField("地点（如：旧金山）", text: $location)
@@ -1004,7 +1092,7 @@ struct EditEntryView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("保存") {
-                    onSave(title, content, date, entry.mood, emoji, location.isEmpty ? nil : location, weather.isEmpty ? nil : weather, imageAssetPaths)
+                    onSave(title, content, date, entry.mood, emoji, tags, location.isEmpty ? nil : location, weather.isEmpty ? nil : weather, imageAssetPaths)
                     dismiss()
                 }
                 .disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -1417,12 +1505,33 @@ extension DiaryEntry {
     }
 
 
+    var displayTags: [String] {
+        var seen = Set<String>()
+        let merged = tags + extractTags()
+        return merged.compactMap { raw in
+            let cleaned = normalizeTag(raw)
+            guard !cleaned.isEmpty else { return nil }
+            let key = cleaned.lowercased()
+            guard !seen.contains(key) else { return nil }
+            seen.insert(key)
+            return cleaned
+        }
+    }
+
     func extractTags() -> [String] {
         content.split(whereSeparator: { $0.isWhitespace || $0.isNewline })
             .map(String.init)
             .filter { $0.hasPrefix("#") && $0.count > 1 }
-            .map { String($0.dropFirst()).trimmingCharacters(in: .punctuationCharacters) }
+            .map { String($0.dropFirst()) }
+            .map(normalizeTag)
             .filter { !$0.isEmpty }
+    }
+
+    private func normalizeTag(_ raw: String) -> String {
+        raw
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "#", with: "")
+            .trimmingCharacters(in: .punctuationCharacters)
     }
 }
 
