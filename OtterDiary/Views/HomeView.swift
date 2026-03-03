@@ -43,8 +43,8 @@ struct HomeView: View {
             }
             .safeAreaPadding(.bottom, DiaryStyle.BottomNav.bottomPadding)
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.88), value: selectedBottomTab)
-        .animation(.easeInOut(duration: 0.2), value: selectedDiaryTab)
+        .animation(DiaryStyle.Motion.selectionSpring, value: selectedBottomTab)
+        .animation(DiaryStyle.Motion.selectionSpring, value: selectedDiaryTab)
         .sheet(isPresented: $showingNewEntry) {
             NavigationStack {
                 NewEntryView { title, content, date, mood in
@@ -127,7 +127,7 @@ struct HomeView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .animation(.easeInOut(duration: 0.25), value: selectedDiaryTab)
+        .animation(DiaryStyle.Motion.selectionSpring, value: selectedDiaryTab)
     }
 
     private var onThisDayContent: some View {
@@ -333,7 +333,7 @@ struct DiaryTopHeader: View {
                 .clipShape(Circle())
                 .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+         .buttonStyle(DiaryPressButtonStyle())
     }
 }
 
@@ -345,7 +345,7 @@ struct DiarySecondaryTabs: View {
             HStack(spacing: 10) {
                 ForEach(DiaryTab.allCases) { tab in
                     Button {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                        withAnimation(DiaryStyle.Motion.selectionSpring) {
                             selected = tab
                         }
                     } label: {
@@ -363,7 +363,7 @@ struct DiarySecondaryTabs: View {
                                     .stroke(Color.black.opacity(selected == tab ? 0 : 0.07), lineWidth: 1)
                             )
                     }
-                    .buttonStyle(.plain)
+                     .buttonStyle(DiaryPressButtonStyle(cornerRadius: 18))
                     .scaleEffect(selected == tab ? 1 : 0.98)
                 }
             }
@@ -383,7 +383,7 @@ struct DiaryBottomNav: View {
             HStack(spacing: 2) {
                 ForEach(BottomTab.allCases) { tab in
                     Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.84)) {
+                        withAnimation(DiaryStyle.Motion.selectionSpring) {
                             selected = tab
                         }
                     } label: {
@@ -405,7 +405,7 @@ struct DiaryBottomNav: View {
                             }
                         }
                     }
-                    .buttonStyle(.plain)
+                     .buttonStyle(DiaryPressButtonStyle(cornerRadius: 18))
                 }
             }
             .padding(.horizontal, 6)
@@ -425,7 +425,7 @@ struct DiaryBottomNav: View {
                     .clipShape(Circle())
                     .shadow(color: DiaryStyle.Shadow.fabColor, radius: DiaryStyle.Shadow.fabRadius, y: DiaryStyle.Shadow.fabY)
             }
-            .buttonStyle(.plain)
+             .buttonStyle(DiaryPressButtonStyle(minimumSize: DiaryStyle.BottomNav.fabSize, cornerRadius: DiaryStyle.BottomNav.fabSize / 2, pressedScale: 0.94))
             .accessibilityLabel("新建日记")
         }
         .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
@@ -439,7 +439,7 @@ struct DiaryTimelineCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(entry.title.isEmpty ? "无标题" : entry.title)
                         .font(.title3.weight(.bold))
@@ -447,9 +447,11 @@ struct DiaryTimelineCard: View {
                     Text(entry.entryDate.formatted(.dateTime.month(.wide).day().weekday(.wide)))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer()
 
                 Menu {
                     Button(role: .destructive, action: onDelete) {
@@ -459,7 +461,7 @@ struct DiaryTimelineCard: View {
                     Image(systemName: "ellipsis")
                         .font(.body.weight(.bold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 30, height: 30)
+                         .frame(width: 44, height: 44)
                         .background(Color(hex: 0xF3F4F6))
                         .clipShape(Circle())
                 }
@@ -502,15 +504,23 @@ struct DiaryTimelineCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Image(systemName: "face.smiling")
-                Image(systemName: "heart")
-                Image(systemName: "bubble.right")
+                cardIconButton(systemName: "face.smiling")
+                cardIconButton(systemName: "heart")
+                cardIconButton(systemName: "bubble.right")
             }
             .font(.footnote)
             .foregroundStyle(.secondary)
         }
         .padding(16)
         .cardStyle()
+    }
+
+    private func cardIconButton(systemName: String) -> some View {
+        Button {} label: {
+            Image(systemName: systemName)
+                .frame(width: 22, height: 22)
+        }
+        .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 12, pressedOpacity: 0.75))
     }
 }
 
@@ -537,7 +547,7 @@ struct CalendarDateBrowserCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
+            HStack(alignment: .firstTextBaseline) {
                 Text("按日期浏览")
                     .font(.headline)
                 Spacer()
@@ -572,8 +582,17 @@ struct CalendarDayContentCard: View {
             } else {
                 ForEach(entries) { entry in
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(entry.title.isEmpty ? "无标题" : entry.title)
-                            .font(.subheadline.weight(.semibold))
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(entry.title.isEmpty ? "无标题" : entry.title)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text(entry.entryDate.formatted(.dateTime.month().day()))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .frame(minWidth: 52, alignment: .trailing)
+                        }
 
                         Text(entry.content)
                             .font(.footnote)
@@ -702,11 +721,11 @@ struct OnThisDayDateNavigatorCard: View {
             Image(systemName: systemName)
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(.primary)
-                .frame(width: 32, height: 32)
+                 .frame(width: 44, height: 44)
                 .background(Color(hex: 0xF3F4F6))
                 .clipShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DiaryPressButtonStyle(cornerRadius: 20))
     }
 }
 
@@ -719,12 +738,29 @@ struct OnThisDayFilterCard: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            Picker("模式", selection: $mode) {
-                ForEach(OnThisDayMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
+            HStack(spacing: 8) {
+                ForEach(OnThisDayMode.allCases) { item in
+                    Button {
+                        withAnimation(DiaryStyle.Motion.selectionSpring) {
+                            mode = item
+                        }
+                    } label: {
+                        Text(item.title)
+                            .font(.subheadline.weight(mode == item ? .bold : .semibold))
+                            .foregroundStyle(mode == item ? .white : .secondary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 36)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(mode == item ? Color.black : Color.clear)
+                            )
+                    }
+                    .buttonStyle(DiaryPressButtonStyle(cornerRadius: 10))
                 }
             }
-            .pickerStyle(.segmented)
+            .padding(4)
+            .background(Color(hex: 0xF3F4F6))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .padding(16)
         .cardStyle()
@@ -770,14 +806,16 @@ struct OnThisDayEntryRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            HStack {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(entry.title.isEmpty ? "无标题" : entry.title)
                     .font(.headline)
                     .lineLimit(1)
-                Spacer(minLength: 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Text(entry.entryDate.formatted(.dateTime.year().month().day()))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(minWidth: 84, alignment: .trailing)
             }
 
             Text(entry.content)
@@ -807,6 +845,7 @@ struct ProfileSummaryCard: View {
                     .font(.title3)
                 Spacer()
                 Button("获取PRO") {}
+                    .buttonStyle(DiaryPressButtonStyle(cornerRadius: 12))
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 16)
@@ -829,7 +868,7 @@ struct ProfileSummaryCard: View {
                     .background(Color(hex: 0xF3F4F6))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .buttonStyle(.plain)
+             .buttonStyle(DiaryPressButtonStyle(cornerRadius: 12))
         }
         .padding(16)
         .cardStyle()
@@ -964,6 +1003,31 @@ enum DiaryStyle {
         static let fabSize: CGFloat = 58
         static let barVerticalPadding: CGFloat = 8
         static let bottomPadding: CGFloat = 8
+    }
+
+    enum Motion {
+        static let selectionSpring = Animation.spring(response: 0.32, dampingFraction: 0.84)
+        static let interactionSpring = Animation.spring(response: 0.2, dampingFraction: 0.82)
+    }
+}
+
+struct DiaryPressButtonStyle: ButtonStyle {
+    var minimumSize: CGFloat = 44
+    var cornerRadius: CGFloat = 14
+    var pressedScale: CGFloat = 0.96
+    var pressedOpacity: CGFloat = 0.82
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(minWidth: minimumSize, minHeight: minimumSize)
+            .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.black.opacity(configuration.isPressed ? 0.06 : 0))
+            )
+            .scaleEffect(configuration.isPressed ? pressedScale : 1)
+            .opacity(configuration.isPressed ? pressedOpacity : 1)
+            .animation(DiaryStyle.Motion.interactionSpring, value: configuration.isPressed)
     }
 }
 

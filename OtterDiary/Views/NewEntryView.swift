@@ -34,11 +34,13 @@ struct NewEntryView: View {
                 .scrollIndicators(.hidden)
             }
         }
+         .ignoresSafeArea(.keyboard, edges: .bottom)
         .safeAreaInset(edge: .bottom) {
             bottomToolbar
                 .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
                 .padding(.top, 10)
-                .padding(.bottom, DiaryStyle.BottomNav.bottomPadding)
+                                .padding(.bottom, DiaryStyle.BottomNav.bottomPadding)
+                .frame(minHeight: 74)
                 .background(.ultraThinMaterial)
         }
         .alert("功能开发中", isPresented: $showPlaceholderHint) {
@@ -61,6 +63,7 @@ struct NewEntryView: View {
                     .clipShape(Circle())
                     .overlay(Circle().stroke(Color.black.opacity(0.05), lineWidth: 1))
             }
+            .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
 
             Spacer()
 
@@ -81,6 +84,7 @@ struct NewEntryView: View {
                     .overlay(Circle().stroke(Color.black.opacity(0.05), lineWidth: 1))
             }
             .accessibilityLabel("设置")
+            .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
         }
     }
 
@@ -151,7 +155,7 @@ struct NewEntryView: View {
                             )
                     )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(DiaryPressButtonStyle(cornerRadius: DiaryStyle.Radius.media))
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -196,7 +200,9 @@ struct NewEntryView: View {
     }
 
     private var bottomToolbar: some View {
-        HStack(spacing: 12) {
+        let isDisabled = content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        return HStack(spacing: 12) {
             HStack(spacing: 10) {
                 toolbarCircleButton(systemName: "camera")
                 toolbarCircleButton(systemName: "mic")
@@ -218,8 +224,9 @@ struct NewEntryView: View {
                     .clipShape(Capsule())
                     .shadow(color: DiaryStyle.Shadow.fabColor, radius: DiaryStyle.Shadow.fabRadius, y: DiaryStyle.Shadow.fabY)
             }
-            .disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .opacity(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                        .buttonStyle(DiaryPressButtonStyle(minimumSize: 50, cornerRadius: 25, pressedScale: 0.97))
+            .disabled(isDisabled)
+            .opacity(isDisabled ? 0.52 : 1)
         }
     }
 
@@ -235,7 +242,7 @@ struct NewEntryView: View {
                 .clipShape(Circle())
                 .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+         .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
     }
 
     private func tagChip(_ tag: String) -> some View {
@@ -257,7 +264,7 @@ struct NewEntryView: View {
                 Capsule().stroke(Color.black.opacity(0.05), lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DiaryPressButtonStyle(cornerRadius: 16, pressedScale: 0.97))
     }
 
     private func addTagFromInput() {
