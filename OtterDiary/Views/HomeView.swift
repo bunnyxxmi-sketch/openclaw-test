@@ -32,7 +32,6 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 DiaryTopHeader(
                     title: headerTitle,
-                    onMenu: { showingSettings = true },
                     onSearch: { showingSearchSheet = true },
                     onSettings: { showingSettings = true }
                 )
@@ -412,17 +411,18 @@ struct DiaryEntryDetailView: View {
 
 struct DiaryTopHeader: View {
     let title: String
-    let onMenu: () -> Void
     let onSearch: () -> Void
     let onSettings: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            chromeIconButton(systemName: "square.grid.2x2", accessibilityLabel: "菜单", accessibilityHint: "打开功能菜单") { onMenu() }
-            Spacer(minLength: 8)
-            Text(title).font(.largeTitle.weight(.heavy)).lineLimit(1).minimumScaleFactor(0.7)
-            Spacer(minLength: 8)
+        ZStack {
+            Text(title)
+                .font(.largeTitle.weight(.heavy))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
             HStack(spacing: 8) {
+                Spacer(minLength: 0)
                 chromeIconButton(systemName: "magnifyingglass", accessibilityLabel: "搜索", accessibilityHint: "搜索日记内容", action: onSearch)
                 chromeIconButton(systemName: "gearshape", accessibilityLabel: "设置", accessibilityHint: "打开应用设置", action: onSettings)
             }
