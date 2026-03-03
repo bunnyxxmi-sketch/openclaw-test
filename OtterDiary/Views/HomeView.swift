@@ -20,7 +20,7 @@ struct HomeView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(hex: 0xF2F3F5).ignoresSafeArea()
+            DiaryColor.pageBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 DiaryTopHeader(
@@ -306,34 +306,38 @@ struct DiaryTopHeader: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            chromeIconButton(systemName: "square.grid.2x2") { onMenu() }
+            chromeIconButton(systemName: "square.grid.2x2", accessibilityLabel: "菜单", accessibilityHint: "打开功能菜单") { onMenu() }
 
             Spacer(minLength: 8)
 
             Text(title)
-                .font(.system(size: DiaryStyle.TopBar.titleSize, weight: .heavy, design: .rounded))
+                .font(.largeTitle.weight(.heavy))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
             Spacer(minLength: 8)
 
             HStack(spacing: 8) {
-                chromeIconButton(systemName: "magnifyingglass", action: onSearch)
-                chromeIconButton(systemName: "gearshape", action: onSettings)
+                chromeIconButton(systemName: "magnifyingglass", accessibilityLabel: "搜索", accessibilityHint: "搜索日记内容", action: onSearch)
+                chromeIconButton(systemName: "gearshape", accessibilityLabel: "设置", accessibilityHint: "打开应用设置", action: onSettings)
             }
         }
-        .frame(height: 48)
+        .frame(minHeight: 48)
     }
 
-    private func chromeIconButton(systemName: String, action: @escaping () -> Void) -> some View {
+    private func chromeIconButton(systemName: String, accessibilityLabel: String, accessibilityHint: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(.primary)
                 .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
-                .background(.white)
+                 .background(DiaryColor.surfacePrimary)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
+                .overlay(Circle().stroke(DiaryColor.strokeStrong, lineWidth: 1))
         }
          .buttonStyle(DiaryPressButtonStyle())
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(accessibilityHint ?? "")
     }
 }
 
@@ -351,19 +355,23 @@ struct DiarySecondaryTabs: View {
                     } label: {
                         Text(tab.title)
                             .font(.system(size: 15, weight: selected == tab ? .heavy : .medium))
-                            .foregroundStyle(selected == tab ? .white : .secondary)
+                            .foregroundStyle(selected == tab ? DiaryColor.onTint : .secondary)
                             .padding(.horizontal, DiaryStyle.SecondaryTab.horizontalPadding)
                             .frame(height: DiaryStyle.SecondaryTab.height)
                             .background(
                                 Capsule(style: .continuous)
-                                    .fill(selected == tab ? Color.black : Color.clear)
+                                    .fill(selected == tab ? DiaryColor.tintStrong : Color.clear)
                             )
                             .overlay(
                                 Capsule(style: .continuous)
-                                    .stroke(Color.black.opacity(selected == tab ? 0 : 0.07), lineWidth: 1)
+                                    .stroke(DiaryColor.strokeStrong.opacity(selected == tab ? 0 : 1), lineWidth: 1)
                             )
                     }
-                     .buttonStyle(DiaryPressButtonStyle(cornerRadius: 18))
+                    .buttonStyle(DiaryPressButtonStyle(cornerRadius: 18))
+                    .accessibilityLabel(tab.title)
+                    .accessibilityValue(selected == tab ? "已选中" : "未选中")
+                    .accessibilityHint("切换到\(tab.title)页")
+                    .accessibilityAddTraits(selected == tab ? .isSelected : [])
                     .scaleEffect(selected == tab ? 1 : 0.98)
                 }
             }
@@ -399,21 +407,25 @@ struct DiaryBottomNav: View {
                         .background {
                             if selected == tab {
                                 Capsule(style: .continuous)
-                                    .fill(.white)
+                                     .fill(DiaryColor.surfacePrimary)
                                     .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
                                     .padding(.vertical, 1)
                             }
                         }
                     }
                      .buttonStyle(DiaryPressButtonStyle(cornerRadius: 18))
+                    .accessibilityLabel(tab.title)
+                    .accessibilityValue(selected == tab ? "已选中" : "未选中")
+                    .accessibilityHint("切换到\(tab.title)标签")
+                    .accessibilityAddTraits(selected == tab ? .isSelected : [])
                 }
             }
             .padding(.horizontal, 6)
             .padding(.vertical, 6)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color(hex: 0xEAECF0).opacity(0.96))
-                    .overlay(Capsule().stroke(Color.black.opacity(0.05), lineWidth: 1))
+                    .fill(DiaryColor.bottomBarBackground)
+                    .overlay(Capsule().stroke(DiaryColor.stroke, lineWidth: 1))
             )
 
             Button(action: onAdd) {
@@ -421,12 +433,13 @@ struct DiaryBottomNav: View {
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: DiaryStyle.BottomNav.fabSize, height: DiaryStyle.BottomNav.fabSize)
-                    .background(Color.black)
+                     .background(DiaryColor.tintStrong)
                     .clipShape(Circle())
                     .shadow(color: DiaryStyle.Shadow.fabColor, radius: DiaryStyle.Shadow.fabRadius, y: DiaryStyle.Shadow.fabY)
             }
              .buttonStyle(DiaryPressButtonStyle(minimumSize: DiaryStyle.BottomNav.fabSize, cornerRadius: DiaryStyle.BottomNav.fabSize / 2, pressedScale: 0.94))
             .accessibilityLabel("新建日记")
+            .accessibilityHint("创建一篇新的日记")
         }
         .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
         .padding(.bottom, DiaryStyle.BottomNav.bottomPadding)
@@ -443,7 +456,8 @@ struct DiaryTimelineCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(entry.title.isEmpty ? "无标题" : entry.title)
                         .font(.title3.weight(.bold))
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(entry.entryDate.formatted(.dateTime.month(.wide).day().weekday(.wide)))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
@@ -462,7 +476,7 @@ struct DiaryTimelineCard: View {
                         .font(.body.weight(.bold))
                         .foregroundStyle(.secondary)
                          .frame(width: 44, height: 44)
-                        .background(Color(hex: 0xF3F4F6))
+                        .background(DiaryColor.controlBackground)
                         .clipShape(Circle())
                 }
             }
@@ -478,7 +492,7 @@ struct DiaryTimelineCard: View {
                     switch phase {
                     case .empty:
                         RoundedRectangle(cornerRadius: DiaryStyle.Radius.media)
-                            .fill(Color(hex: 0xF3F4F6))
+                            .fill(DiaryColor.controlBackground)
                             .aspectRatio(4 / 3, contentMode: .fit)
                             .overlay { ProgressView() }
                     case .success(let image):
@@ -490,7 +504,7 @@ struct DiaryTimelineCard: View {
                             .clipShape(RoundedRectangle(cornerRadius: DiaryStyle.Radius.media, style: .continuous))
                     case .failure:
                         RoundedRectangle(cornerRadius: DiaryStyle.Radius.media)
-                            .fill(Color(hex: 0xF3F4F6))
+                            .fill(DiaryColor.controlBackground)
                             .aspectRatio(4 / 3, contentMode: .fit)
                             .overlay { Image(systemName: "photo") }
                     @unknown default:
@@ -585,7 +599,8 @@ struct CalendarDayContentCard: View {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(entry.title.isEmpty ? "无标题" : entry.title)
                                 .font(.subheadline.weight(.semibold))
-                                .lineLimit(1)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             Text(entry.entryDate.formatted(.dateTime.month().day()))
                                 .font(.caption.weight(.semibold))
@@ -604,7 +619,7 @@ struct CalendarDayContentCard: View {
                                 switch phase {
                                 case .empty:
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color(hex: 0xF3F4F6))
+                                        .fill(DiaryColor.controlBackground)
                                         .frame(height: 120)
                                         .overlay { ProgressView() }
                                 case .success(let image):
@@ -616,7 +631,7 @@ struct CalendarDayContentCard: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                 case .failure:
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color(hex: 0xF3F4F6))
+                                        .fill(DiaryColor.controlBackground)
                                         .frame(height: 120)
                                 @unknown default:
                                     EmptyView()
@@ -625,7 +640,7 @@ struct CalendarDayContentCard: View {
                         }
                     }
                     .padding(12)
-                    .background(Color(hex: 0xF8F8F9))
+                    .background(DiaryColor.surfaceSecondary)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
             }
@@ -663,14 +678,14 @@ struct CalendarImageAggregationCard: View {
                                     switch phase {
                                     case .empty:
                                         RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(hex: 0xF2F3F5))
+                                            .fill(DiaryColor.imagePlaceholder)
                                     case .success(let image):
                                         image
                                             .resizable()
                                             .scaledToFill()
                                     case .failure:
                                         RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(hex: 0xF2F3F5))
+                                            .fill(DiaryColor.imagePlaceholder)
                                             .overlay { Image(systemName: "photo") }
                                     @unknown default:
                                         EmptyView()
@@ -694,7 +709,7 @@ struct OnThisDayDateNavigatorCard: View {
 
     var body: some View {
         HStack {
-            arrowButton(systemName: "chevron.left", offset: -1)
+            arrowButton(systemName: "chevron.left", offset: -1, accessibilityLabel: "前一天")
 
             Spacer()
 
@@ -708,13 +723,13 @@ struct OnThisDayDateNavigatorCard: View {
 
             Spacer()
 
-            arrowButton(systemName: "chevron.right", offset: 1)
+            arrowButton(systemName: "chevron.right", offset: 1, accessibilityLabel: "后一天")
         }
         .padding(16)
         .cardStyle()
     }
 
-    private func arrowButton(systemName: String, offset: Int) -> some View {
+    private func arrowButton(systemName: String, offset: Int, accessibilityLabel: String) -> some View {
         Button {
             selectedDate = Calendar.current.date(byAdding: .day, value: offset, to: selectedDate) ?? selectedDate
         } label: {
@@ -722,10 +737,12 @@ struct OnThisDayDateNavigatorCard: View {
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(.primary)
                  .frame(width: 44, height: 44)
-                .background(Color(hex: 0xF3F4F6))
+                .background(DiaryColor.controlBackground)
                 .clipShape(Circle())
         }
         .buttonStyle(DiaryPressButtonStyle(cornerRadius: 20))
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint("按天切换回顾日期")
     }
 }
 
@@ -752,14 +769,17 @@ struct OnThisDayFilterCard: View {
                             .frame(height: 36)
                             .background(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(mode == item ? Color.black : Color.clear)
+                                    .fill(mode == item ? DiaryColor.tintStrong : Color.clear)
                             )
                     }
-                    .buttonStyle(DiaryPressButtonStyle(cornerRadius: 10))
+                     .buttonStyle(DiaryPressButtonStyle(cornerRadius: 10))
+                    .accessibilityLabel(item.title)
+                    .accessibilityValue(mode == item ? "已选中" : "未选中")
+                    .accessibilityHint("切换筛选范围")
                 }
             }
             .padding(4)
-            .background(Color(hex: 0xF3F4F6))
+            .background(DiaryColor.controlBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .padding(16)
@@ -824,7 +844,7 @@ struct OnThisDayEntryRow: View {
                 .lineLimit(2)
         }
         .padding(12)
-        .background(Color(hex: 0xF8F8F9))
+        .background(DiaryColor.surfaceSecondary)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
@@ -838,7 +858,7 @@ struct ProfileSummaryCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(hex: 0xCDE6FB))
+                    .fill(DiaryColor.avatarBackground)
                     .frame(width: 62, height: 62)
                     .overlay { Image(systemName: "bird") }
                 Text("🐰")
@@ -850,7 +870,7 @@ struct ProfileSummaryCard: View {
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, DiaryStyle.BottomNav.barVerticalPadding)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.black, lineWidth: 2))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(DiaryColor.tintStrong, lineWidth: 2))
             }
 
             HStack(spacing: 10) {
@@ -865,7 +885,7 @@ struct ProfileSummaryCard: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
-                    .background(Color(hex: 0xF3F4F6))
+                    .background(DiaryColor.controlBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
              .buttonStyle(DiaryPressButtonStyle(cornerRadius: 12))
@@ -962,6 +982,22 @@ extension DiaryEntry {
 }
 
 
+enum DiaryColor {
+    static let pageBackground = Color(uiColor: .systemGroupedBackground)
+    static let surfacePrimary = Color(uiColor: .secondarySystemGroupedBackground)
+    static let surfaceSecondary = Color(uiColor: .tertiarySystemGroupedBackground)
+    static let controlBackground = Color(uiColor: .secondarySystemBackground)
+    static let imagePlaceholder = Color(uiColor: .quaternarySystemFill)
+    static let bottomBarBackground = Color(uiColor: .systemGray6).opacity(0.96)
+    static let tintStrong = Color.primary
+    static let onTint = Color(uiColor: .systemBackground)
+    static let avatarBackground = Color(uiColor: .systemBlue).opacity(0.25)
+    static let strokeSoft = Color.primary.opacity(0.08)
+    static let stroke = Color.primary.opacity(0.1)
+    static let strokeStrong = Color.primary.opacity(0.14)
+}
+
+
 enum DiaryStyle {
     enum Spacing {
         static let pageHorizontal: CGFloat = 20
@@ -977,7 +1013,7 @@ enum DiaryStyle {
     }
 
     enum Shadow {
-        static let cardColor = Color.black.opacity(0.06)
+        static let cardColor = DiaryColor.strokeStrong
         static let cardRadius: CGFloat = 12
         static let cardY: CGFloat = 6
 
@@ -1023,7 +1059,7 @@ struct DiaryPressButtonStyle: ButtonStyle {
             .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.black.opacity(configuration.isPressed ? 0.06 : 0))
+                    .fill(DiaryColor.strokeSoft.opacity(configuration.isPressed ? 1 : 0))
             )
             .scaleEffect(configuration.isPressed ? pressedScale : 1)
             .opacity(configuration.isPressed ? pressedOpacity : 1)
@@ -1036,10 +1072,10 @@ struct DiaryCardModifier: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: DiaryStyle.Radius.card, style: .continuous)
-                    .fill(.white)
+                     .fill(DiaryColor.surfacePrimary)
                     .overlay(
                         RoundedRectangle(cornerRadius: DiaryStyle.Radius.card, style: .continuous)
-                            .stroke(Color.black.opacity(0.04), lineWidth: 1)
+                            .stroke(DiaryColor.strokeSoft, lineWidth: 1)
                     )
             )
             .shadow(

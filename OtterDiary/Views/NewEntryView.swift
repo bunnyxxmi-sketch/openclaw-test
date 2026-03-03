@@ -16,7 +16,7 @@ struct NewEntryView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: 0xF3F4F6)
+            DiaryColor.pageBackground
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -34,12 +34,12 @@ struct NewEntryView: View {
                 .scrollIndicators(.hidden)
             }
         }
-         .ignoresSafeArea(.keyboard, edges: .bottom)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .safeAreaInset(edge: .bottom) {
             bottomToolbar
                 .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
                 .padding(.top, 10)
-                                .padding(.bottom, DiaryStyle.BottomNav.bottomPadding)
+                .padding(.bottom, DiaryStyle.BottomNav.bottomPadding)
                 .frame(minHeight: 74)
                 .background(.ultraThinMaterial)
         }
@@ -52,39 +52,40 @@ struct NewEntryView: View {
 
     private var topBar: some View {
         HStack(spacing: 12) {
-            Button {
-                dismiss()
-            } label: {
+            Button { dismiss() } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.primary)
                     .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
-                    .background(.white)
+                    .background(DiaryColor.surfacePrimary)
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.black.opacity(0.05), lineWidth: 1))
+                    .overlay(Circle().stroke(DiaryColor.stroke, lineWidth: 1))
             }
             .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
+            .accessibilityLabel("返回")
+            .accessibilityHint("关闭新建页面")
 
             Spacer()
 
             Text("新建日记")
-                .font(.system(size: 19, weight: .heavy, design: .rounded))
+                .font(.title2.weight(.heavy))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             Spacer()
 
-            Button {
-                showPlaceholderHint = true
-            } label: {
+            Button { showPlaceholderHint = true } label: {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.primary)
                     .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
-                    .background(.white)
+                    .background(DiaryColor.surfacePrimary)
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.black.opacity(0.05), lineWidth: 1))
+                    .overlay(Circle().stroke(DiaryColor.stroke, lineWidth: 1))
             }
-            .accessibilityLabel("设置")
             .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
+            .accessibilityLabel("更多选项")
+            .accessibilityHint("打开新建页功能入口")
         }
     }
 
@@ -92,7 +93,7 @@ struct NewEntryView: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(date, format: .dateTime.locale(Locale(identifier: "zh_CN")).year().month(.wide).day())
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.title3.weight(.bold))
 
                 Text(date, format: .dateTime.locale(Locale(identifier: "zh_CN")).weekday(.wide).hour().minute())
                     .font(.subheadline)
@@ -110,11 +111,11 @@ struct NewEntryView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                         .frame(minHeight: 240)
-                        .background(Color(hex: 0xF9FAFB))
+                        .background(DiaryColor.controlBackground)
                         .clipShape(RoundedRectangle(cornerRadius: DiaryStyle.Radius.control, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: DiaryStyle.Radius.control, style: .continuous)
-                                .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                                .stroke(DiaryColor.strokeStrong, lineWidth: 1)
                         )
 
                     if content.isEmpty {
@@ -132,9 +133,7 @@ struct NewEntryView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                Button {
-                    showPlaceholderHint = true
-                } label: {
+                Button { showPlaceholderHint = true } label: {
                     VStack(spacing: 10) {
                         Image(systemName: "plus")
                             .font(.system(size: 22, weight: .semibold))
@@ -145,17 +144,16 @@ struct NewEntryView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 130)
-                    .background(Color(hex: 0xFCFCFD))
+                    .background(DiaryColor.surfacePrimary)
                     .clipShape(RoundedRectangle(cornerRadius: DiaryStyle.Radius.media, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: DiaryStyle.Radius.media, style: .continuous)
-                            .stroke(
-                                Color(hex: 0xD1D5DB),
-                                style: StrokeStyle(lineWidth: 1.2, dash: [6, 6])
-                            )
+                            .stroke(DiaryColor.strokeStrong, style: StrokeStyle(lineWidth: 1.2, dash: [6, 6]))
                     )
                 }
                 .buttonStyle(DiaryPressButtonStyle(cornerRadius: DiaryStyle.Radius.media))
+                .accessibilityLabel("添加图片")
+                .accessibilityHint("打开图片入口")
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -179,21 +177,21 @@ struct NewEntryView: View {
                     .onSubmit(addTagFromInput)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
-                    .background(Color(hex: 0xF9FAFB))
+                    .background(DiaryColor.controlBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                            .stroke(DiaryColor.strokeStrong, lineWidth: 1)
                     )
             }
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: DiaryStyle.Radius.card, style: .continuous)
-                .fill(.white)
+                .fill(DiaryColor.surfacePrimary)
                 .overlay(
                     RoundedRectangle(cornerRadius: DiaryStyle.Radius.card, style: .continuous)
-                        .stroke(Color.black.opacity(0.04), lineWidth: 1)
+                        .stroke(DiaryColor.strokeSoft, lineWidth: 1)
                 )
                 .shadow(color: DiaryStyle.Shadow.cardColor, radius: DiaryStyle.Shadow.cardRadius, y: DiaryStyle.Shadow.cardY)
         )
@@ -202,47 +200,64 @@ struct NewEntryView: View {
     private var bottomToolbar: some View {
         let isDisabled = content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
-        return HStack(spacing: 12) {
-            HStack(spacing: 10) {
-                toolbarCircleButton(systemName: "camera")
-                toolbarCircleButton(systemName: "mic")
-                toolbarCircleButton(systemName: "face.smiling")
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                toolbarButtons
+                Spacer()
+                saveButton(isDisabled: isDisabled)
             }
 
-            Spacer()
-
-            Button {
-                onSave(title, content, date, mood)
-                dismiss()
-            } label: {
-                Text("完成")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 24)
-                    .frame(height: 50)
-                    .background(Color.black)
-                    .clipShape(Capsule())
-                    .shadow(color: DiaryStyle.Shadow.fabColor, radius: DiaryStyle.Shadow.fabRadius, y: DiaryStyle.Shadow.fabY)
+            VStack(alignment: .trailing, spacing: 12) {
+                toolbarButtons
+                saveButton(isDisabled: isDisabled)
             }
-                        .buttonStyle(DiaryPressButtonStyle(minimumSize: 50, cornerRadius: 25, pressedScale: 0.97))
-            .disabled(isDisabled)
-            .opacity(isDisabled ? 0.52 : 1)
         }
     }
 
-    private func toolbarCircleButton(systemName: String) -> some View {
+    private var toolbarButtons: some View {
+        HStack(spacing: 10) {
+            toolbarCircleButton(systemName: "camera", accessibilityLabel: "添加图片", accessibilityHint: "打开图片入口")
+            toolbarCircleButton(systemName: "mic", accessibilityLabel: "语音输入", accessibilityHint: "打开语音入口")
+            toolbarCircleButton(systemName: "face.smiling", accessibilityLabel: "选择心情", accessibilityHint: "打开表情入口")
+        }
+    }
+
+    @ViewBuilder
+    private func saveButton(isDisabled: Bool) -> some View {
         Button {
-            showPlaceholderHint = true
+            onSave(title, content, date, mood)
+            dismiss()
         } label: {
+            Text("完成")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 24)
+                .frame(height: 50)
+                .background(DiaryColor.tintStrong)
+                .clipShape(Capsule())
+                .shadow(color: DiaryStyle.Shadow.fabColor, radius: DiaryStyle.Shadow.fabRadius, y: DiaryStyle.Shadow.fabY)
+        }
+        .buttonStyle(DiaryPressButtonStyle(minimumSize: 50, cornerRadius: 25, pressedScale: 0.97))
+        .accessibilityLabel("完成")
+        .accessibilityHint(isDisabled ? "请先输入内容" : "保存当前日记")
+        .accessibilityValue(isDisabled ? "不可用" : "可用")
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.52 : 1)
+    }
+
+    private func toolbarCircleButton(systemName: String, accessibilityLabel: String, accessibilityHint: String) -> some View {
+        Button { showPlaceholderHint = true } label: {
             Image(systemName: systemName)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(.primary)
                 .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
-                .background(.white)
+                .background(DiaryColor.surfacePrimary)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
+                .overlay(Circle().stroke(DiaryColor.strokeStrong, lineWidth: 1))
         }
-         .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
+        .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(accessibilityHint)
     }
 
     private func tagChip(_ tag: String) -> some View {
@@ -258,10 +273,10 @@ struct NewEntryView: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(Color(hex: 0xF3F4F6))
+            .background(DiaryColor.controlBackground)
             .clipShape(Capsule())
             .overlay(
-                Capsule().stroke(Color.black.opacity(0.05), lineWidth: 1)
+                Capsule().stroke(DiaryColor.stroke, lineWidth: 1)
             )
         }
         .buttonStyle(DiaryPressButtonStyle(cornerRadius: 16, pressedScale: 0.97))
