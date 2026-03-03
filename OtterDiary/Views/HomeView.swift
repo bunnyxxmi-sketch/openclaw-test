@@ -11,6 +11,7 @@ struct HomeView: View {
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
     @State private var selectedCalendarDate: Date = Calendar.current.startOfDay(for: .now)
     @State private var calendarMonthAnchor: Date = Calendar.current.startOfDay(for: .now)
+    @State private var profileMonthAnchor: Date = Calendar.current.startOfDay(for: .now)
     @State private var editingEntry: DiaryEntry?
 
     @State private var showingNewEntry = false
@@ -129,7 +130,11 @@ struct HomeView: View {
     }
 
     private var headerTitle: String {
-        "面包屑"
+        switch selectedBottomTab {
+        case .diary: return "面包屑"
+        case .calendar: return "日历"
+        case .profile: return "用户"
+        }
     }
 
     @ViewBuilder
@@ -268,9 +273,10 @@ struct HomeView: View {
     private var profilePage: some View {
         ScrollView {
             VStack(spacing: DiaryStyle.Spacing.sectionGap) {
-                ProfileSummaryCard(entriesCount: viewModel.visibleEntries.count, imageCount: viewModel.allImageURLs.count, entries: viewModel.visibleEntries) {
-                    showingSettings = true
-                }
+                ProfileCard()
+                StatsCard(entriesCount: viewModel.visibleEntries.count, imageCount: viewModel.allImageURLs.count, entries: viewModel.visibleEntries)
+                DualCalendarCard(entries: viewModel.visibleEntries, monthAnchor: $profileMonthAnchor)
+                ActionGridCard(onExport: { doExport(.json) }, onSettings: { showingSettings = true })
             }
             .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
             .padding(.bottom, DiaryStyle.Spacing.bottomSafe)
@@ -953,41 +959,58 @@ struct EditEntryView: View {
     }
 }
 
-struct ProfileSummaryCard: View {
-    let entriesCount: Int
-    let imageCount: Int
-    let entries: [DiaryEntry]
-    let onExport: () -> Void
-
+struct ProfileCard: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                RoundedRectangle(cornerRadius: 10).fill(DiaryColor.avatarBackground).frame(width: 62, height: 62).overlay { Image(systemName: "bird") }
-                Text("🐰").font(.title3)
-                Spacer()
+        HStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(DiaryColor.avatarBackground)
+                .frame(width: 64, height: 64)
+                .overlay { Image(systemName: "person.fill").font(.title3) }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("我的日记")
+                    .font(.headline.weight(.bold))
+                Text("记录每一天的情绪与灵感")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-
-            HStack(spacing: 10) {
-                StatBlock(title: "笔记", value: "\(entriesCount)")
-                StatBlock(title: "媒体", value: "\(imageCount)")
-                StatBlock(title: "字数", value: "\(entriesCount * 40)")
-                StatBlock(title: "位置", value: "1")
-            }
-
-            ActivityHeatmap(entries: entries)
-
-            Button(action: onExport) {
-                Label("导出", systemImage: "square.and.arrow.up")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(DiaryColor.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            .buttonStyle(DiaryPressButtonStyle(cornerRadius: 12))
+            Spacer()
         }
         .padding(16)
         .cardStyle()
+    }
+}
+
+struct StatsCard: View {
+    let entriesCount: Int
+    let imageCount: Int
+    let entries: [DiaryEntry]
+
+    private var wordCount: Int {
+        entries.reduce(0) { $0 + $1.content.count }
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            StatBlock(title: "笔记", value: "\(entriesCount)")
+            StatBlock(title: "媒体", value: "\(imageCount)")
+            StatBlock(title: "字数", value: "\(wordCount)")
+            StatBlock(title: "连记", value: "\(currentStreak(entries))")
+        }
+        .padding(16)
+        .cardStyle()
+    }
+
+    private func currentStreak(_ entries: [DiaryEntry]) -> Int {
+        let cal = Calendar.current
+        let days = Set(entries.map { cal.startOfDay(for: $0.entryDate) })
+        var streak = 0
+        var cursor = cal.startOfDay(for: .now)
+        while days.contains(cursor) {
+            streak += 1
+            guard let prev = cal.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = prev
+        }
+        return streak
     }
 }
 
@@ -998,74 +1021,186 @@ struct StatBlock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.title3.weight(.bold))
+            Text(value).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-
-struct ActivityHeatmap: View {
+struct DualCalendarCard: View {
     let entries: [DiaryEntry]
-    private let levels = [Color(uiColor: .systemGray5), Color(hex: 0xC6E48B), Color(hex: 0x7BC96F), Color(hex: 0x239A3B), Color(hex: 0x196127)]
+    @Binding var monthAnchor: Date
 
-    private var cells: [(Date, Int)] {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: .now)
-        let start = cal.date(byAdding: .day, value: -181, to: today) ?? today
-        let byDay = Dictionary(grouping: entries) { cal.startOfDay(for: $0.entryDate) }
-        return (0...181).compactMap { offset in
-            guard let day = cal.date(byAdding: .day, value: offset, to: start) else { return nil }
-            return (day, byDay[day]?.count ?? 0)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Button { monthAnchor = Calendar.current.date(byAdding: .month, value: -1, to: monthAnchor) ?? monthAnchor } label: { Image(systemName: "chevron.left") }
+                Spacer()
+                Text(monthAnchor.formatted(.dateTime.year().month(.wide)))
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Button { monthAnchor = Calendar.current.date(byAdding: .month, value: 1, to: monthAnchor) ?? monthAnchor } label: { Image(systemName: "chevron.right") }
+            }
+
+            HStack(alignment: .top, spacing: 10) {
+                HeatmapMonthView(entries: entries, monthAnchor: monthAnchor)
+                EmojiMonthView(entries: entries, monthAnchor: monthAnchor)
+            }
         }
+        .padding(16)
+        .cardStyle()
     }
+}
 
-    private var rowCellCount: Int { 26 }
+struct HeatmapMonthView: View {
+    let entries: [DiaryEntry]
+    let monthAnchor: Date
 
-    private var rows: [[(Date, Int)]] {
-        stride(from: 0, to: cells.count, by: rowCellCount).map {
-            Array(cells[$0..<min($0 + rowCellCount, cells.count)])
-        }
-    }
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("活跃热力图")
-                .font(.subheadline.weight(.semibold))
+            Text("热力图")
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-            ScrollView(.horizontal) {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        HStack(spacing: 4) {
-                            ForEach(row, id: \.0) { day, count in
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(levelColor(count))
-                                    .frame(width: 10, height: 10)
-                                    .accessibilityLabel(day.formatted(.dateTime.year().month().day()))
-                            }
-                        }
+            WeekdayHeader()
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(Array(monthCells.enumerated()), id: \.offset) { _, day in
+                    if let day {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(levelColor(countOn(day)))
+                            .frame(height: 18)
+                    } else {
+                        Color.clear.frame(height: 18)
                     }
                 }
-                .padding(.vertical, 2)
-            }
-            HStack(spacing: 6) {
-                Text("少").font(.caption2).foregroundStyle(.secondary)
-                ForEach(0..<5, id: \.self) { i in
-                    RoundedRectangle(cornerRadius: 2).fill(levels[i]).frame(width: 10, height: 10)
-                }
-                Text("多").font(.caption2).foregroundStyle(.secondary)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var monthCells: [Date?] { monthDays(for: monthAnchor) }
+
+    private func countOn(_ day: Date) -> Int {
+        let cal = Calendar.current
+        return entries.filter { cal.isDate($0.entryDate, inSameDayAs: day) }.count
     }
 
     private func levelColor(_ count: Int) -> Color {
         switch count {
-        case 0: return levels[0]
-        case 1: return levels[1]
-        case 2: return levels[2]
-        case 3: return levels[3]
-        default: return levels[4]
+        case 0: return Color(uiColor: .systemGray5)
+        case 1: return Color(hex: 0xDDECC8)
+        case 2: return Color(hex: 0xBDE19D)
+        case 3: return Color(hex: 0x8ACA69)
+        default: return Color(hex: 0x4A9B38)
         }
+    }
+}
+
+struct EmojiMonthView: View {
+    let entries: [DiaryEntry]
+    let monthAnchor: Date
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Emoji 日历")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            WeekdayHeader()
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(Array(monthCells.enumerated()), id: \.offset) { _, day in
+                    if let day {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(DiaryColor.surfaceSecondary)
+                                .overlay(RoundedRectangle(cornerRadius: 5).stroke(DiaryColor.strokeSoft, lineWidth: 1))
+                            if let emoji = emojiOn(day), !emoji.isEmpty {
+                                Text(emoji).font(.caption)
+                            } else {
+                                Text("·")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .frame(height: 18)
+                    } else {
+                        Color.clear.frame(height: 18)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var monthCells: [Date?] { monthDays(for: monthAnchor) }
+
+    private func emojiOn(_ day: Date) -> String? {
+        let cal = Calendar.current
+        return entries
+            .filter { cal.isDate($0.entryDate, inSameDayAs: day) }
+            .sorted { $0.entryDate > $1.entryDate }
+            .compactMap { $0.emoji?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first
+    }
+}
+
+struct WeekdayHeader: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(["日", "一", "二", "三", "四", "五", "六"], id: \.self) { name in
+                Text(name)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+}
+
+private func monthDays(for monthAnchor: Date) -> [Date?] {
+    let cal = Calendar.current
+    guard let monthRange = cal.range(of: .day, in: .month, for: monthAnchor),
+          let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: monthAnchor)) else { return [] }
+
+    let firstWeekday = cal.component(.weekday, from: monthStart)
+    let leading = Array(repeating: Optional<Date>.none, count: max(0, firstWeekday - cal.firstWeekday))
+    let days = monthRange.compactMap { day -> Date? in
+        cal.date(byAdding: .day, value: day - 1, to: monthStart)
+    }
+    return leading + days
+}
+
+struct ActionGridCard: View {
+    let onExport: () -> Void
+    let onSettings: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            actionButton(title: "导出", icon: "square.and.arrow.up", action: onExport)
+            actionButton(title: "设置", icon: "gearshape", action: onSettings)
+        }
+        .padding(16)
+        .cardStyle()
+    }
+
+    private func actionButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Label(title, systemImage: icon)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .background(DiaryColor.controlBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(DiaryPressButtonStyle(cornerRadius: 12))
     }
 }
 
