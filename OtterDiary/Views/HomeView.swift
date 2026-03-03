@@ -4,51 +4,35 @@ import UniformTypeIdentifiers
 struct HomeView: View {
     @ObservedObject var viewModel: DiaryViewModel
 
-    @State private var selectedPage: HomePage = .timeline
+    @State private var selectedBottomTab: BottomTab = .diary
+    @State private var selectedDiaryTab: DiaryTab = .onThisDay
     @State private var onThisDayMode: OnThisDayMode = .lastYear
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
+
     @State private var showingNewEntry = false
     @State private var showingSettings = false
     @State private var exportURL: URL?
     @State private var showingExporter = false
     @State private var exportFormat: ExportFormat = .json
     @State private var exportError = false
+    @State private var showingSearchHint = false
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack(alignment: .bottom) {
+            Color(hex: 0xF3F4F6)
+                .ignoresSafeArea()
+
             VStack(spacing: 0) {
-                header
+                topHeader
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 14)
 
-                pagePicker
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 12)
-
-                TabView(selection: $selectedPage) {
-                    timelinePage
-                        .tag(HomePage.timeline)
-
-                    GalleryView(imageURLs: viewModel.allImageURLs)
-                        .tag(HomePage.gallery)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.spring(response: 0.34, dampingFraction: 0.9), value: selectedPage)
+                contentArea
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
-            fabButton
-        }
-        .navigationTitle("Otter Diary")
-        .navigationBarTitleDisplayMode(.large)
-        .background(Color(.systemGroupedBackground))
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingSettings = true
-                } label: {
-                    Label("设置", systemImage: "gearshape")
-                }
-            }
+            bottomOverlay
         }
         .sheet(isPresented: $showingNewEntry) {
             NavigationStack {
@@ -75,176 +59,403 @@ struct HomeView: View {
         .alert("导出失败", isPresented: $exportError) {
             Button("知道了", role: .cancel) {}
         }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(greetingText)
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.primary)
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(Date.now.formatted(date: .complete, time: .omitted))
-                    .font(.headline)
-                Text(todayPrompt)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.06), radius: 10, y: 6)
+        .alert("搜索功能即将上线", isPresented: $showingSearchHint) {
+            Button("好的", role: .cancel) {}
         }
     }
 
-    private var pagePicker: some View {
-        HStack(spacing: 8) {
-            ForEach(HomePage.allCases) { page in
+    private var topHeader: some View {
+        HStack(spacing: 10) {
+            iconCircleButton(systemName: "line.3.horizontal", action: {})
+
+            Spacer(minLength: 8)
+
+            Text("海獭日记")
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 8) {
+                iconCircleButton(systemName: "magnifyingglass") {
+                    showingSearchHint = true
+                }
+                iconCircleButton(systemName: "gearshape") {
+                    showingSettings = true
+                }
+            }
+        }
+    }
+
+    private var contentArea: some View {
+        Group {
+            switch selectedBottomTab {
+            case .diary:
+                diaryHome
+            case .library:
+                libraryPage
+            case .profile:
+                profilePage
+            }
+        }
+    }
+
+    private var diaryHome: some View {
+        VStack(spacing: 12) {
+            diaryTabBar
+                .padding(.horizontal, 20)
+
+            Group {
+                switch selectedDiaryTab {
+                case .onThisDay:
+                    onThisDayPage
+                case .timeline:
+                    timelinePage
+                case .lifeLine:
+                    comingSoonCard("人生线")
+                case .bookLine:
+                    comingSoonCard("书籍线")
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 110)
+        }
+    }
+
+    private var diaryTabBar: some View {
+        HStack(spacing: 6) {
+            ForEach(DiaryTab.allCases) { tab in
                 Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                        selectedPage = page
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) {
+                        selectedDiaryTab = tab
                     }
                 } label: {
-                    Text(page.title)
-                        .font(.subheadline.weight(.semibold))
+                    Text(tab.title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(selectedDiaryTab == tab ? .primary : .secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background {
-                            if selectedPage == page {
-                                Capsule(style: .continuous)
-                                    .fill(Color.accentColor.opacity(0.15))
+                            if selectedDiaryTab == tab {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(.white)
+                                    .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
                             }
                         }
-                        .foregroundStyle(selectedPage == page ? Color.accentColor : .secondary)
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(6)
         .background(
-            Capsule(style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.white.opacity(0.72))
         )
     }
 
-    private var timelinePage: some View {
+    private var onThisDayPage: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                onThisDaySection
-                allEntriesSection
+            VStack(spacing: 12) {
+                dateNavigatorCard
+                onThisDayFilterCard
+                onThisDayListCard
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 120)
+            .padding(.top, 2)
         }
         .scrollIndicators(.hidden)
     }
 
-    private var onThisDaySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("同一天回顾")
-                .font(.headline)
+    private var dateNavigatorCard: some View {
+        HStack {
+            Button {
+                selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 32, height: 32)
+                    .background(Color(hex: 0xF3F4F6))
+                    .clipShape(Circle())
+            }
 
-            Picker("筛选", selection: $onThisDayMode) {
-                Text("去年今日").tag(OnThisDayMode.lastYear)
-                Text("近五年").tag(OnThisDayMode.recentFiveYears)
+            Spacer()
+
+            Button("今天") {
+                selectedDate = Calendar.current.startOfDay(for: .now)
+            }
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(.secondary)
+
+            VStack(spacing: 3) {
+                Text(selectedDate.formatted(.dateTime.year().month(.wide).day()))
+                    .font(.headline)
+                Text("同一天回顾")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button {
+                selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 32, height: 32)
+                    .background(Color(hex: 0xF3F4F6))
+                    .clipShape(Circle())
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+
+    private var onThisDayFilterCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("筛选")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Picker("模式", selection: $onThisDayMode) {
+                ForEach(OnThisDayMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
             }
             .pickerStyle(.segmented)
+        }
+        .padding(16)
+        .cardStyle()
+    }
 
-            let entries = onThisDayMode == .lastYear ? viewModel.lastYearOnThisDayEntries : Array(viewModel.recentFiveYearOnThisDayEntries)
+    private var onThisDayListCard: some View {
+        let entries: [DiaryEntry] = {
+            switch onThisDayMode {
+            case .lastYear:
+                return viewModel.onThisDayService.entriesForYearOffsetOnThisDay(
+                    from: viewModel.visibleEntries,
+                    yearOffset: 1,
+                    targetDate: selectedDate
+                )
+            case .recentFiveYears:
+                return viewModel.onThisDayService.entriesForRecentYearsOnThisDay(
+                    from: viewModel.visibleEntries,
+                    years: 5,
+                    targetDate: selectedDate
+                )
+            }
+        }()
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(onThisDayMode == .lastYear ? "去年今日" : "近五年")
+                .font(.headline)
 
             if entries.isEmpty {
-                ContentUnavailableView(
-                    onThisDayMode == .lastYear ? "去年今日还没有记录" : "近五年的今天还没有记录",
-                    systemImage: "calendar.badge.exclamationmark",
-                    description: Text("今天写下新的一页，明年就能在这里重逢。")
-                )
+                VStack(spacing: 8) {
+                    Image(systemName: "calendar.badge.exclamationmark")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.secondary)
+                    Text("这一天还没有记录")
+                        .font(.subheadline.weight(.semibold))
+                    Text("点右下角 + 写下今天，未来会在这里重逢。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color(.secondarySystemGroupedBackground))
-                )
             } else {
                 VStack(spacing: 10) {
                     ForEach(entries) { entry in
                         NavigationLink {
-                            OnThisDayListView(entries: onThisDayMode == .lastYear ? [entry] : viewModel.recentFiveYearOnThisDayEntries)
+                            OnThisDayListView(entries: entries)
                         } label: {
-                            OnThisDayCard(entry: entry)
+                            OnThisDayEntryRow(entry: entry)
                         }
                         .buttonStyle(.plain)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
-                .animation(.easeOut(duration: 0.25), value: entries.count)
             }
         }
+        .padding(16)
+        .cardStyle()
     }
 
-    private var allEntriesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("全部日记")
-                .font(.headline)
-
-            if viewModel.visibleEntries.isEmpty {
-                ContentUnavailableView("还没有日记", systemImage: "book.closed", description: Text("点右下角新建，开始记录今天。"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 30)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color(.secondarySystemGroupedBackground))
-                    )
-            } else {
-                VStack(spacing: 10) {
+    private var timelinePage: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                if viewModel.visibleEntries.isEmpty {
+                    emptyTimeline
+                } else {
                     ForEach(viewModel.visibleEntries) { entry in
-                        EntryCard(entry: entry) {
+                        TimelineEntryCard(entry: entry) {
                             viewModel.deleteEntry(id: entry.id)
                         }
                     }
                 }
             }
+            .padding(.top, 2)
         }
+        .scrollIndicators(.hidden)
     }
 
-    private var fabButton: some View {
+    private var emptyTimeline: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "book.closed")
+                .font(.system(size: 28))
+                .foregroundStyle(.secondary)
+            Text("还没有日记")
+                .font(.headline)
+            Text("点右下角 + 开始记录今天。")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28)
+        .cardStyle()
+    }
+
+    private var libraryPage: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                GalleryView(imageURLs: viewModel.allImageURLs)
+
+                Button {
+                    showingSettings = true
+                } label: {
+                    HStack {
+                        Label("导出与设置", systemImage: "gearshape")
+                            .font(.headline)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(16)
+                    .cardStyle()
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 110)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    private var profilePage: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("我的统计")
+                        .font(.headline)
+
+                    HStack(spacing: 10) {
+                        StatCard(title: "日记总数", value: "\(viewModel.visibleEntries.count)")
+                        StatCard(title: "图片回忆", value: "\(viewModel.allImageURLs.count)")
+                    }
+
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Label("打开设置与导出", systemImage: "square.and.arrow.up")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color(hex: 0xF3F4F6))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(16)
+                .cardStyle()
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 110)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    private func comingSoonCard(_ title: String) -> some View {
+        VStack(spacing: 10) {
+            Spacer(minLength: 60)
+            Image(systemName: "sparkles")
+                .font(.system(size: 28))
+                .foregroundStyle(.secondary)
+            Text("\(title) Coming Soon")
+                .font(.headline)
+            Text("这个分区正在设计中，先在时间线里记录生活。")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Spacer(minLength: 80)
+        }
+        .frame(maxWidth: .infinity)
+        .cardStyle()
+    }
+
+    private var bottomOverlay: some View {
+        HStack(alignment: .bottom) {
+            bottomNavBar
+            Spacer(minLength: 10)
+            addButton
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 12)
+        .safeAreaPadding(.bottom, 6)
+    }
+
+    private var bottomNavBar: some View {
+        HStack(spacing: 4) {
+            ForEach(BottomTab.allCases) { tab in
+                Button {
+                    selectedBottomTab = tab
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 16, weight: .semibold))
+                        Text(tab.title)
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .foregroundStyle(selectedBottomTab == tab ? .primary : .secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            Capsule(style: .continuous)
+                .fill(.white)
+                .shadow(color: .black.opacity(0.08), radius: 12, y: 5)
+        )
+    }
+
+    private var addButton: some View {
         Button {
             showingNewEntry = true
         } label: {
-            Image(systemName: "square.and.pencil")
-                .font(.system(size: 20, weight: .semibold))
+            Image(systemName: "plus")
+                .font(.system(size: 24, weight: .bold))
                 .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
-                .background(.blue.gradient)
+                .frame(width: 58, height: 58)
+                .background(Color.black)
                 .clipShape(Circle())
-                .overlay(Circle().strokeBorder(.white.opacity(0.3), lineWidth: 1))
-                .shadow(color: .black.opacity(0.18), radius: 14, y: 8)
+                .shadow(color: .black.opacity(0.22), radius: 14, y: 7)
         }
-        .padding(.trailing, 20)
-        .padding(.bottom, 22)
-        .safeAreaPadding(.bottom, 4)
         .accessibilityLabel("新建日记")
-        .accessibilityHint("打开新建日记页面")
     }
 
-    private var greetingText: String {
-        let hour = Calendar.current.component(.hour, from: .now)
-        switch hour {
-        case 5..<12: return "早安，今天也记录一点吧"
-        case 12..<18: return "下午好，今天过得怎么样？"
-        default: return "晚上好，留住今天的片段"
+    private func iconCircleButton(systemName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 36, height: 36)
+                .background(.white)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
         }
-    }
-
-    private var todayPrompt: String {
-        "写下一个瞬间、一句心情，都会成为未来的礼物。"
     }
 
     private func doExport(_ format: ExportFormat) {
@@ -258,7 +469,7 @@ struct HomeView: View {
     }
 }
 
-private struct OnThisDayCard: View {
+private struct OnThisDayEntryRow: View {
     let entry: DiaryEntry
 
     var body: some View {
@@ -268,84 +479,103 @@ private struct OnThisDayCard: View {
                     .font(.headline)
                     .lineLimit(1)
                 Spacer(minLength: 8)
-                Text(entry.entryDate.formatted(.dateTime.month(.abbreviated).day()))
+                Text(entry.entryDate.formatted(.dateTime.year().month().day()))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.accentColor.opacity(0.12)))
             }
 
             Text(entry.content)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(hex: 0xF7F8FA))
         )
     }
 }
 
-private struct EntryCard: View {
+private struct TimelineEntryCard: View {
     let entry: DiaryEntry
     let onDelete: () -> Void
 
+    var firstImageURL: URL? {
+        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+        let range = NSRange(entry.content.startIndex..<entry.content.endIndex, in: entry.content)
+        let links = detector?.matches(in: entry.content, options: [], range: range)
+            .compactMap { $0.url } ?? []
+        return links.first {
+            ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"].contains($0.pathExtension.lowercased())
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
-                Text(entry.title.isEmpty ? "无标题" : entry.title)
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(entry.title.isEmpty ? "无标题" : entry.title)
+                        .font(.headline)
+                    Text(entry.entryDate.formatted(.dateTime.year().month(.wide).day()))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Spacer(minLength: 8)
+
                 Menu {
                     Button(role: .destructive, action: onDelete) {
                         Label("删除", systemImage: "trash")
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.body)
+                    Image(systemName: "ellipsis")
+                        .font(.body.weight(.bold))
                         .foregroundStyle(.secondary)
+                        .frame(width: 26, height: 26)
+                        .background(Color(hex: 0xF3F4F6))
+                        .clipShape(Circle())
+                }
+            }
+
+            if let imageURL = firstImageURL {
+                AsyncImage(url: imageURL) { phase in
+                    switch phase {
+                    case .empty:
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color(hex: 0xF3F4F6))
+                            .frame(height: 180)
+                            .overlay { ProgressView() }
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 180)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    case .failure:
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color(hex: 0xF3F4F6))
+                            .frame(height: 180)
+                            .overlay {
+                                Image(systemName: "photo")
+                                    .foregroundStyle(.secondary)
+                            }
+                    @unknown default:
+                        EmptyView()
+                    }
                 }
             }
 
             Text(entry.content)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .lineLimit(3)
-
-            Text(entry.entryDate.formatted(date: .abbreviated, time: .omitted))
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+                .lineLimit(5)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-        )
+        .padding(16)
+        .cardStyle()
     }
-}
-
-private enum HomePage: String, CaseIterable, Identifiable {
-    case timeline
-    case gallery
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .timeline: return "今天"
-        case .gallery: return "图片"
-        }
-    }
-}
-
-private enum OnThisDayMode {
-    case lastYear
-    case recentFiveYears
 }
 
 struct GalleryView: View {
@@ -358,22 +588,24 @@ struct GalleryView: View {
     ]
 
     var body: some View {
-        ScrollView {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("图书馆")
+                .font(.headline)
+
             if imageURLs.isEmpty {
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     Image(systemName: "photo.stack")
-                        .font(.system(size: 38))
+                        .font(.system(size: 28))
                         .foregroundStyle(.secondary)
                     Text("还没有图片回忆")
-                        .font(.headline)
-                    Text("在日记正文里粘贴图片链接，这里会自动汇总成相册。")
-                        .font(.subheadline)
+                        .font(.subheadline.weight(.semibold))
+                    Text("在日记正文里粘贴图片链接，这里会自动汇总。")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 30)
-                .padding(.top, 90)
+                .padding(.vertical, 26)
             } else {
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(imageURLs, id: \.absoluteString) { url in
@@ -402,12 +634,105 @@ struct GalleryView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 110)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+private struct StatCard: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(.title2.weight(.bold))
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color(hex: 0xF3F4F6))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+private enum BottomTab: CaseIterable, Identifiable {
+    case diary
+    case library
+    case profile
+
+    var id: String { title }
+
+    var title: String {
+        switch self {
+        case .diary: return "日记"
+        case .library: return "图书馆"
+        case .profile: return "用户"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .diary: return "book"
+        case .library: return "photo.stack"
+        case .profile: return "person"
+        }
+    }
+}
+
+private enum DiaryTab: CaseIterable, Identifiable {
+    case onThisDay
+    case timeline
+    case lifeLine
+    case bookLine
+
+    var id: String { title }
+
+    var title: String {
+        switch self {
+        case .onThisDay: return "那年今日"
+        case .timeline: return "时间线"
+        case .lifeLine: return "人生线"
+        case .bookLine: return "书籍线"
+        }
+    }
+}
+
+private enum OnThisDayMode: CaseIterable, Identifiable {
+    case lastYear
+    case recentFiveYears
+
+    var id: String { title }
+
+    var title: String {
+        switch self {
+        case .lastYear: return "去年今日"
+        case .recentFiveYears: return "近五年"
+        }
+    }
+}
+
+private extension View {
+    func cardStyle() -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(.white)
+            )
+            .shadow(color: .black.opacity(0.06), radius: 12, y: 6)
+    }
+}
+
+private extension Color {
+    init(hex: UInt) {
+        let red = Double((hex >> 16) & 0xFF) / 255.0
+        let green = Double((hex >> 8) & 0xFF) / 255.0
+        let blue = Double(hex & 0xFF) / 255.0
+        self.init(red: red, green: green, blue: blue)
     }
 }
 
