@@ -36,7 +36,7 @@ struct ExportService {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
 
-        var result = "# Otter Diary Export\n\n"
+        var result = "# 面包屑导出\n\n"
         for e in entries {
             result += "## \(e.title.isEmpty ? "无标题" : e.title)\n"
             result += "- 日期: \(formatter.string(from: e.entryDate))\n"

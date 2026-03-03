@@ -19,7 +19,7 @@ struct HomeView: View {
     @State private var showingExporter = false
     @State private var exportFormat: ExportFormat = .json
     @State private var feedback: StandardFeedback?
-    @State private var showingSearchHint = false
+    @State private var showingSearchSheet = false
     
     @State private var timelineTopToken = UUID()
     @State private var fabVisible = true
@@ -32,8 +32,8 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 DiaryTopHeader(
                     title: headerTitle,
-                    onMenu: {},
-                    onSearch: { showingSearchHint = true },
+                    onMenu: { showingSettings = true },
+                    onSearch: { showingSearchSheet = true },
                     onSettings: { showingSettings = true }
                 )
                 .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
@@ -112,10 +112,12 @@ struct HomeView: View {
         } message: {
             Text(feedback?.message ?? "")
         }
-        .alert("My logs", isPresented: $showingSearchHint) {
-            Button("好的", role: .cancel) {}
-        } message: {
-            Text("可在内容中使用 #标签，方便后续检索与整理。")
+        .sheet(isPresented: $showingSearchSheet) {
+            NavigationStack {
+                SearchEntriesView(entries: viewModel.visibleEntries)
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
         .onChange(of: viewModel.latestSyncMessage) { _, msg in
             guard let msg else { return }
@@ -128,7 +130,7 @@ struct HomeView: View {
     }
 
     private var headerTitle: String {
-        "My logs"
+        "面包屑"
     }
 
     @ViewBuilder
@@ -846,10 +848,14 @@ struct LifeYearSection: View {
     let year: Int
     let entries: [DiaryEntry]
 
+    private var yearLabel: String {
+        "\(String(year))年"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("\(year)年")
+                Text(yearLabel)
                     .font(.headline)
                 Spacer()
                 Text("\(entries.count) 条")
@@ -1014,17 +1020,24 @@ struct ActivityHeatmap: View {
         }
     }
 
+    private var rowCellCount: Int { 26 }
+
+    private var rows: [[(Date, Int)]] {
+        stride(from: 0, to: cells.count, by: rowCellCount).map {
+            Array(cells[$0..<min($0 + rowCellCount, cells.count)])
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("活跃热力图")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
-            let weeks = stride(from: 0, to: cells.count, by: 7).map { Array(cells[$0..<min($0+7, cells.count)]) }
             ScrollView(.horizontal) {
-                HStack(alignment: .top, spacing: 4) {
-                    ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
-                        VStack(spacing: 4) {
-                            ForEach(week, id: \.0) { day, count in
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                        HStack(spacing: 4) {
+                            ForEach(row, id: \.0) { day, count in
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(levelColor(count))
                                     .frame(width: 10, height: 10)
@@ -1071,6 +1084,51 @@ private func saveDiaryImageData(_ data: Data) throws -> String {
     let name = "\(UUID().uuidString).jpg"
     try data.write(to: dir.appendingPathComponent(name), options: .atomic)
     return "entry-images/\(name)"
+}
+
+
+struct SearchEntriesView: View {
+    @Environment(\.dismiss) private var dismiss
+    let entries: [DiaryEntry]
+    @State private var keyword: String = ""
+
+    private var filteredEntries: [DiaryEntry] {
+        let q = keyword.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return entries }
+        return entries.filter {
+            $0.title.lowercased().contains(q) ||
+            $0.content.lowercased().contains(q) ||
+            ($0.emoji?.lowercased().contains(q) ?? false)
+        }
+    }
+
+    var body: some View {
+        List {
+            if filteredEntries.isEmpty {
+                Text("没有匹配的记录")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(filteredEntries) { entry in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(entry.title.isEmpty ? "无标题" : entry.title)
+                            .font(.headline)
+                            .lineLimit(1)
+                        Text(entry.content)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                        Text(entry.entryDate.formatted(.dateTime.year().month().day()))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .searchable(text: $keyword, placement: .navigationBarDrawer(displayMode: .always), prompt: "搜索标题或正文")
+        .navigationTitle("搜索")
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("关闭") { dismiss() } } }
+    }
 }
 
 enum BottomTab: CaseIterable, Identifiable {

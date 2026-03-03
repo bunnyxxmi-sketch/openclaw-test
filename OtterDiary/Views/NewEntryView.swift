@@ -26,7 +26,14 @@ struct NewEntryView: View {
 
     private var hasUnsavedChanges: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-        !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        !imageAssetPaths.isEmpty
+    }
+
+    private var canSave: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        !imageAssetPaths.isEmpty
     }
 
     var body: some View {
@@ -186,7 +193,7 @@ struct NewEntryView: View {
     }
 
     private var bottomToolbar: some View {
-        let isDisabled = content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let isDisabled = !canSave
         return HStack(spacing: 12) {
             HStack(spacing: 10) {
                 PhotosPicker(selection: $pickedPhotoItem, matching: .images, photoLibrary: .shared()) {
