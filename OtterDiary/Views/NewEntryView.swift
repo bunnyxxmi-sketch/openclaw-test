@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct NewEntryView: View {
     @Environment(\.dismiss) private var dismiss
@@ -7,17 +8,21 @@ struct NewEntryView: View {
     @State private var content = ""
     @State private var date = Date()
     @State private var mood: Mood? = nil
+    @State private var selectedEmoji: String? = nil
+    @State private var imageAssetPaths: [String] = []
+    @State private var pickedPhotoItem: PhotosPickerItem?
 
     @State private var tags: [String] = ["日常", "旅行"]
     @State private var newTagText = ""
-    @State private var showPlaceholderHint = false
     @State private var showDraftDialog = false
 
     @AppStorage("draft_title") private var draftTitle: String = ""
     @AppStorage("draft_content") private var draftContent: String = ""
     @AppStorage("draft_timestamp") private var draftTimestamp: Double = 0
 
-    let onSave: (_ title: String, _ content: String, _ date: Date, _ mood: Mood?) -> Void
+    let onSave: (_ title: String, _ content: String, _ date: Date, _ mood: Mood?, _ emoji: String?, _ imageAssetPaths: [String]) -> Void
+
+    private let emojiOptions = ["😀","😌","🥳","😴","😢","🤩","🔥","🌧️","📚","☕️"]
 
     private var hasUnsavedChanges: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
@@ -45,6 +50,16 @@ struct NewEntryView: View {
             }
         }
         .onAppear(perform: restoreDraftIfNeeded)
+        .onChange(of: pickedPhotoItem) { _, newValue in
+            guard let item = newValue else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let path = try? savePickedImageData(data) {
+                    await MainActor.run { imageAssetPaths.append(path) }
+                }
+                await MainActor.run { pickedPhotoItem = nil }
+            }
+        }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .interactiveDismissDisabled(hasUnsavedChanges)
         .safeAreaInset(edge: .bottom) {
@@ -54,11 +69,6 @@ struct NewEntryView: View {
                 .padding(.bottom, DiaryStyle.BottomNav.bottomPadding)
                 .frame(minHeight: 74)
                 .background(.ultraThinMaterial)
-        }
-        .alert("My logs", isPresented: $showPlaceholderHint) {
-            Button("知道了", role: .cancel) {}
-        } message: {
-            Text("可直接在正文粘贴图片链接，保存后会出现在日历缩略图中。")
         }
         .confirmationDialog("保存草稿？", isPresented: $showDraftDialog, titleVisibility: .visible) {
             Button("保存草稿") {
@@ -97,17 +107,7 @@ struct NewEntryView: View {
             Spacer()
             Text("新建日记").font(.title2.weight(.heavy))
             Spacer()
-
-            Button { showPlaceholderHint = true } label: {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
-                    .background(DiaryColor.surfacePrimary)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(DiaryColor.stroke, lineWidth: 1))
-            }
-            .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
+            Color.clear.frame(width: 44, height: 44)
         }
     }
 
@@ -116,6 +116,28 @@ struct NewEntryView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(date, format: .dateTime.locale(Locale(identifier: "zh_CN")).year().month(.wide).day()).font(.title3.weight(.bold))
                 Text(date, format: .dateTime.locale(Locale(identifier: "zh_CN")).weekday(.wide).hour().minute()).font(.subheadline).foregroundStyle(.secondary)
+            }
+
+            if let selectedEmoji {
+                Text("心情表情：\(selectedEmoji)")
+                    .font(.subheadline.weight(.semibold))
+            }
+
+            if !imageAssetPaths.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 10) {
+                        ForEach(imageAssetPaths, id: \.self) { path in
+                            if let uiImage = UIImage(contentsOfFile: localImageURL(for: path).path) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 80, height: 80)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                        }
+                    }
+                }
+                .frame(height: 84)
             }
 
             TextField("标题（可选）", text: $title)
@@ -167,13 +189,21 @@ struct NewEntryView: View {
         let isDisabled = content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return HStack(spacing: 12) {
             HStack(spacing: 10) {
-                toolbarCircleButton(systemName: "camera")
-                toolbarCircleButton(systemName: "mic")
-                toolbarCircleButton(systemName: "face.smiling")
+                PhotosPicker(selection: $pickedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                    toolbarCircleIcon(systemName: "photo")
+                }
+                Menu {
+                    Button("清除表情") { selectedEmoji = nil }
+                    ForEach(emojiOptions, id: \.self) { emoji in
+                        Button(emoji) { selectedEmoji = emoji }
+                    }
+                } label: {
+                    toolbarCircleIcon(systemName: "face.smiling")
+                }
             }
             Spacer()
             Button {
-                onSave(title, content, date, mood)
+                onSave(title, content, date, mood, selectedEmoji, imageAssetPaths)
                 clearDraft()
                 dismiss()
             } label: {
@@ -191,17 +221,14 @@ struct NewEntryView: View {
         }
     }
 
-    private func toolbarCircleButton(systemName: String) -> some View {
-        Button { showPlaceholderHint = true } label: {
-            Image(systemName: systemName)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.primary)
-                .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
-                .background(DiaryColor.surfacePrimary)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(DiaryColor.strokeStrong, lineWidth: 1))
-        }
-        .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
+    private func toolbarCircleIcon(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(.primary)
+            .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
+            .background(DiaryColor.surfacePrimary)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(DiaryColor.strokeStrong, lineWidth: 1))
     }
 
     private func tagChip(_ tag: String) -> some View {
@@ -247,4 +274,20 @@ struct NewEntryView: View {
             content = draftContent
         }
     }
+    private func savePickedImageData(_ data: Data) throws -> String {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
+        let dir = docs.appendingPathComponent("entry-images", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: dir.path) {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+        let name = "\(UUID().uuidString).jpg"
+        try data.write(to: dir.appendingPathComponent(name), options: .atomic)
+        return "entry-images/\(name)"
+    }
+
+    private func localImageURL(for relativePath: String) -> URL {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
+        return docs.appendingPathComponent(relativePath)
+    }
+
 }

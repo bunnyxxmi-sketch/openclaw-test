@@ -18,6 +18,8 @@ struct DiaryEntry: Identifiable, Codable, Hashable {
     var title: String
     var content: String
     var mood: Mood?
+    var emoji: String?
+    var imageAssetPaths: [String]
     var isDeleted: Bool
 
     init(
@@ -28,6 +30,8 @@ struct DiaryEntry: Identifiable, Codable, Hashable {
         title: String = "",
         content: String,
         mood: Mood? = nil,
+        emoji: String? = nil,
+        imageAssetPaths: [String] = [],
         isDeleted: Bool = false
     ) {
         self.id = id
@@ -37,6 +41,8 @@ struct DiaryEntry: Identifiable, Codable, Hashable {
         self.title = title
         self.content = content
         self.mood = mood
+        self.emoji = emoji
+        self.imageAssetPaths = imageAssetPaths
         self.isDeleted = isDeleted
     }
 }

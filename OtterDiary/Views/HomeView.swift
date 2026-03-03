@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import UniformTypeIdentifiers
 
 struct HomeView: View {
@@ -19,8 +20,7 @@ struct HomeView: View {
     @State private var exportFormat: ExportFormat = .json
     @State private var feedback: StandardFeedback?
     @State private var showingSearchHint = false
-    @State private var selectedBookTag: String? = nil
-
+    
     @State private var timelineTopToken = UUID()
     @State private var fabVisible = true
     @State private var lastScrollOffset: CGFloat = 0
@@ -53,8 +53,8 @@ struct HomeView: View {
         .animation(DiaryStyle.Motion.selectionSpring, value: selectedDiaryTab)
         .sheet(isPresented: $showingNewEntry) {
             NavigationStack {
-                NewEntryView { title, content, date, mood in
-                    viewModel.addEntry(title: title, content: content, date: date, mood: mood)
+                NewEntryView { title, content, date, mood, emoji, imageAssetPaths in
+                    viewModel.addEntry(title: title, content: content, date: date, mood: mood, emoji: emoji, imageAssetPaths: imageAssetPaths)
                     selectedBottomTab = .diary
                     selectedDiaryTab = .timeline
                     timelineTopToken = UUID()
@@ -65,8 +65,8 @@ struct HomeView: View {
         }
         .sheet(item: $editingEntry) { entry in
             NavigationStack {
-                EditEntryView(entry: entry) { title, content, date, mood in
-                    viewModel.updateEntry(id: entry.id, title: title, content: content, date: date, mood: mood)
+                EditEntryView(entry: entry) { title, content, date, mood, emoji, imageAssetPaths in
+                    viewModel.updateEntry(id: entry.id, title: title, content: content, date: date, mood: mood, emoji: emoji, imageAssetPaths: imageAssetPaths)
                 }
             }
             .presentationDetents([.large])
@@ -115,7 +115,7 @@ struct HomeView: View {
         .alert("My logs", isPresented: $showingSearchHint) {
             Button("好的", role: .cancel) {}
         } message: {
-            Text("可在内容中使用 #标签（例如 #书籍）快速整理，再到「书籍线」筛选查看。")
+            Text("可在内容中使用 #标签，方便后续检索与整理。")
         }
         .onChange(of: viewModel.latestSyncMessage) { _, msg in
             guard let msg else { return }
@@ -163,10 +163,8 @@ struct HomeView: View {
                             timelineSection
                         } else if selectedDiaryTab == .onThisDay {
                             onThisDayContent
-                        } else if selectedDiaryTab == .life {
-                            lifeLineContent
                         } else {
-                            booksLineContent
+                            lifeLineContent
                         }
                     }
                     .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
@@ -237,79 +235,6 @@ struct HomeView: View {
         }
     }
 
-    private var booksLineContent: some View {
-        let bookEntries = viewModel.visibleEntries.filter { entry in
-            let text = "\(entry.title) \(entry.content)".lowercased()
-            let keywords = ["书", "阅读", "读完", "book", "kindle", "novel", "小说"]
-            let hasKeyword = keywords.contains { text.contains($0) }
-            let tags = entry.extractTags().map { $0.lowercased() }
-            let hasBookTag = tags.contains { ["书", "书籍", "阅读", "读书", "books", "book"].contains($0) }
-            return hasKeyword || hasBookTag
-        }
-
-        let allTags = Array(Set(bookEntries.flatMap { $0.extractTags() })).sorted()
-        let filteredEntries: [DiaryEntry] = {
-            guard let selectedBookTag, !selectedBookTag.isEmpty else { return bookEntries }
-            return bookEntries.filter { $0.extractTags().contains(selectedBookTag) }
-        }()
-
-        return VStack(alignment: .leading, spacing: DiaryStyle.Spacing.sectionGap) {
-            Text("书籍筛选")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            ScrollView(.horizontal) {
-                HStack(spacing: 8) {
-                    filterChip(title: "全部", selected: selectedBookTag == nil) { selectedBookTag = nil }
-                    ForEach(allTags, id: \.self) { tag in
-                        filterChip(title: "#\(tag)", selected: selectedBookTag == tag) { selectedBookTag = tag }
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-            .scrollIndicators(.hidden)
-
-            if filteredEntries.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "books.vertical")
-                    Text("还没有书籍记录")
-                        .font(.headline)
-                    Text("在日记中写下阅读内容，或加上 #书籍 / #阅读 标签。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-                .cardStyle()
-            } else {
-                ForEach(filteredEntries) { entry in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text(entry.title.isEmpty ? "无标题" : entry.title)
-                                .font(.headline)
-                                .lineLimit(2)
-                            Spacer()
-                            Text(entry.entryDate.formatted(.dateTime.year().month().day()))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        Text(entry.content)
-                            .font(.subheadline)
-                            .lineLimit(3)
-                        if !entry.extractTags().isEmpty {
-                            Text(entry.extractTags().map { "#\($0)" }.joined(separator: "  "))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(16)
-                    .cardStyle()
-                }
-            }
-        }
-    }
-
     private func filterChip(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
@@ -342,7 +267,7 @@ struct HomeView: View {
     private var profilePage: some View {
         ScrollView {
             VStack(spacing: DiaryStyle.Spacing.sectionGap) {
-                ProfileSummaryCard(entriesCount: viewModel.visibleEntries.count, imageCount: viewModel.allImageURLs.count) {
+                ProfileSummaryCard(entriesCount: viewModel.visibleEntries.count, imageCount: viewModel.allImageURLs.count, entries: viewModel.visibleEntries) {
                     showingSettings = true
                 }
             }
@@ -451,10 +376,28 @@ struct DiaryEntryDetailView: View {
                 Text(entry.entryDate.formatted(.dateTime.year().month(.wide).day().weekday(.wide).hour().minute()))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                if let emoji = entry.emoji, !emoji.isEmpty {
+                    Text(emoji).font(.system(size: 28))
+                }
                 Text(entry.content)
                     .font(.body)
                     .lineSpacing(4)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if !entry.imageAssetPaths.isEmpty {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 10) {
+                            ForEach(entry.imageAssetPaths, id: \.self) { path in
+                                if let image = UIImage(contentsOfFile: diaryLocalImageURL(for: path).path) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 150, height: 120)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                }
+                            }
+                        }
+                    }
+                }
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -620,9 +563,12 @@ struct DiaryTimelineCard: View {
                 }
             }
 
-            Text(entry.content).font(.subheadline).lineSpacing(2).lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 6) {
+                if let emoji = entry.emoji, !emoji.isEmpty { Text(emoji) }
+                Text(entry.content).font(.subheadline).lineSpacing(2).lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
+            }
 
-            if let firstImage = entry.extractImageURLs().first {
+            if let firstImage = entry.primaryDisplayImageURL {
                 AsyncImage(url: firstImage) { phase in
                     switch phase {
                     case .empty:
@@ -718,7 +664,7 @@ struct CalendarMonthGridCard: View {
                 ForEach(Array(monthDays.enumerated()), id: \.offset) { _, day in
                     if let day {
                         let dayEntries = entries.filter { Calendar.current.isDate($0.entryDate, inSameDayAs: day) }
-                        let imageURL = dayEntries.flatMap { $0.extractImageURLs() }.first
+                        let imageURL = dayEntries.compactMap { $0.primaryDisplayImageURL }.first
                         let hasRecord = !dayEntries.isEmpty
                         let targetEntry = dayEntries.sorted { $0.entryDate > $1.entryDate }.first
 
@@ -746,7 +692,7 @@ struct CalendarMonthGridCard: View {
                 }
             }
 
-            if entries.flatMap({ $0.extractImageURLs() }).isEmpty {
+            if entries.compactMap({ $0.primaryDisplayImageURL }).isEmpty {
                 Text("本月暂无图片，添加带图片链接的日记后会显示在日期格中。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -929,18 +875,23 @@ struct LifeYearSection: View {
 struct EditEntryView: View {
     @Environment(\.dismiss) private var dismiss
     let entry: DiaryEntry
-    let onSave: (String, String, Date, Mood?) -> Void
+    let onSave: (String, String, Date, Mood?, String?, [String]) -> Void
 
     @State private var title: String
     @State private var content: String
     @State private var date: Date
+    @State private var emoji: String?
+    @State private var imageAssetPaths: [String]
+    @State private var pickedPhotoItem: PhotosPickerItem?
 
-    init(entry: DiaryEntry, onSave: @escaping (String, String, Date, Mood?) -> Void) {
+    init(entry: DiaryEntry, onSave: @escaping (String, String, Date, Mood?, String?, [String]) -> Void) {
         self.entry = entry
         self.onSave = onSave
         _title = State(initialValue: entry.title)
         _content = State(initialValue: entry.content)
         _date = State(initialValue: entry.entryDate)
+        _emoji = State(initialValue: entry.emoji)
+        _imageAssetPaths = State(initialValue: entry.imageAssetPaths)
     }
 
     var body: some View {
@@ -948,12 +899,46 @@ struct EditEntryView: View {
             Section("标题") { TextField("无标题", text: $title) }
             Section("时间") { DatePicker("", selection: $date).labelsHidden() }
             Section("内容") { TextEditor(text: $content).frame(minHeight: 180) }
+            Section("表情") {
+                TextField("emoji", text: Binding(get: { emoji ?? "" }, set: { emoji = $0.isEmpty ? nil : $0 }))
+            }
+            Section("图片") {
+                PhotosPicker(selection: $pickedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                    Label("添加图片", systemImage: "photo")
+                }
+                if !imageAssetPaths.isEmpty {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 10) {
+                            ForEach(imageAssetPaths, id: \.self) { path in
+                                if let image = UIImage(contentsOfFile: diaryLocalImageURL(for: path).path) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 90, height: 90)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                            }
+                        }
+                    }
+                    .frame(height: 96)
+                }
+            }
+        }
+        .onChange(of: pickedPhotoItem) { _, newValue in
+            guard let item = newValue else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let path = try? saveDiaryImageData(data) {
+                    await MainActor.run { imageAssetPaths.append(path) }
+                }
+                await MainActor.run { pickedPhotoItem = nil }
+            }
         }
         .navigationTitle("编辑记录")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("保存") {
-                    onSave(title, content, date, entry.mood)
+                    onSave(title, content, date, entry.mood, emoji, imageAssetPaths)
                     dismiss()
                 }
                 .disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -965,6 +950,7 @@ struct EditEntryView: View {
 struct ProfileSummaryCard: View {
     let entriesCount: Int
     let imageCount: Int
+    let entries: [DiaryEntry]
     let onExport: () -> Void
 
     var body: some View {
@@ -973,13 +959,6 @@ struct ProfileSummaryCard: View {
                 RoundedRectangle(cornerRadius: 10).fill(DiaryColor.avatarBackground).frame(width: 62, height: 62).overlay { Image(systemName: "bird") }
                 Text("🐰").font(.title3)
                 Spacer()
-                Button("获取PRO") {}
-                    .buttonStyle(DiaryPressButtonStyle(cornerRadius: 12))
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, DiaryStyle.BottomNav.barVerticalPadding)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(DiaryColor.tintStrong, lineWidth: 2))
             }
 
             HStack(spacing: 10) {
@@ -988,6 +967,8 @@ struct ProfileSummaryCard: View {
                 StatBlock(title: "字数", value: "\(entriesCount * 40)")
                 StatBlock(title: "位置", value: "1")
             }
+
+            ActivityHeatmap(entries: entries)
 
             Button(action: onExport) {
                 Label("导出", systemImage: "square.and.arrow.up")
@@ -1017,6 +998,81 @@ struct StatBlock: View {
     }
 }
 
+
+struct ActivityHeatmap: View {
+    let entries: [DiaryEntry]
+    private let levels = [Color(uiColor: .systemGray5), Color(hex: 0xC6E48B), Color(hex: 0x7BC96F), Color(hex: 0x239A3B), Color(hex: 0x196127)]
+
+    private var cells: [(Date, Int)] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: .now)
+        let start = cal.date(byAdding: .day, value: -181, to: today) ?? today
+        let byDay = Dictionary(grouping: entries) { cal.startOfDay(for: $0.entryDate) }
+        return (0...181).compactMap { offset in
+            guard let day = cal.date(byAdding: .day, value: offset, to: start) else { return nil }
+            return (day, byDay[day]?.count ?? 0)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("活跃热力图")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            let weeks = stride(from: 0, to: cells.count, by: 7).map { Array(cells[$0..<min($0+7, cells.count)]) }
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: 4) {
+                    ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                        VStack(spacing: 4) {
+                            ForEach(week, id: \.0) { day, count in
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(levelColor(count))
+                                    .frame(width: 10, height: 10)
+                                    .accessibilityLabel(day.formatted(.dateTime.year().month().day()))
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            HStack(spacing: 6) {
+                Text("少").font(.caption2).foregroundStyle(.secondary)
+                ForEach(0..<5, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: 2).fill(levels[i]).frame(width: 10, height: 10)
+                }
+                Text("多").font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func levelColor(_ count: Int) -> Color {
+        switch count {
+        case 0: return levels[0]
+        case 1: return levels[1]
+        case 2: return levels[2]
+        case 3: return levels[3]
+        default: return levels[4]
+        }
+    }
+}
+
+
+private func diaryLocalImageURL(for relativePath: String) -> URL {
+    let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
+    return docs.appendingPathComponent(relativePath)
+}
+
+private func saveDiaryImageData(_ data: Data) throws -> String {
+    let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
+    let dir = docs.appendingPathComponent("entry-images", isDirectory: true)
+    if !FileManager.default.fileExists(atPath: dir.path) {
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    }
+    let name = "\(UUID().uuidString).jpg"
+    try data.write(to: dir.appendingPathComponent(name), options: .atomic)
+    return "entry-images/\(name)"
+}
+
 enum BottomTab: CaseIterable, Identifiable {
     case diary
     case calendar
@@ -1042,14 +1098,12 @@ enum DiaryTab: CaseIterable, Identifiable {
     case onThisDay
     case timeline
     case life
-    case books
     var id: String { title }
     var title: String {
         switch self {
         case .onThisDay: return "那年今日"
         case .timeline: return "时间线"
         case .life: return "人生线"
-        case .books: return "书籍线"
         }
     }
 }
@@ -1068,12 +1122,18 @@ enum OnThisDayMode: CaseIterable, Identifiable {
 
 extension DiaryEntry {
     func extractImageURLs() -> [URL] {
-        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return [] }
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return imageAssetPaths.map { diaryLocalImageURL(for: $0) } }
         let range = NSRange(content.startIndex..<content.endIndex, in: content)
-        return detector.matches(in: content, options: [], range: range)
+        let remote = detector.matches(in: content, options: [], range: range)
             .compactMap { $0.url }
             .filter { ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"].contains($0.pathExtension.lowercased()) }
+        return imageAssetPaths.map { diaryLocalImageURL(for: $0) } + remote
     }
+
+    var primaryDisplayImageURL: URL? {
+        extractImageURLs().first
+    }
+
 
     func extractTags() -> [String] {
         content.split(whereSeparator: { $0.isWhitespace || $0.isNewline })

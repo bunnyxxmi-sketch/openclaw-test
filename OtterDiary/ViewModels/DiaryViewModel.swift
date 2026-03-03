@@ -24,7 +24,7 @@ final class DiaryViewModel: ObservableObject {
         }
     }
 
-    func addEntry(title: String, content: String, date: Date, mood: Mood?) {
+    func addEntry(title: String, content: String, date: Date, mood: Mood?, emoji: String?, imageAssetPaths: [String]) {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -32,7 +32,9 @@ final class DiaryViewModel: ObservableObject {
             entryDate: date,
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             content: trimmed,
-            mood: mood
+            mood: mood,
+            emoji: emoji,
+            imageAssetPaths: imageAssetPaths
         )
         entries.insert(entry, at: 0)
         persist()
@@ -45,7 +47,7 @@ final class DiaryViewModel: ObservableObject {
         persist()
     }
 
-    func updateEntry(id: UUID, title: String, content: String, date: Date, mood: Mood?) {
+    func updateEntry(id: UUID, title: String, content: String, date: Date, mood: Mood?, emoji: String?, imageAssetPaths: [String]) {
         guard let i = entries.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -54,6 +56,8 @@ final class DiaryViewModel: ObservableObject {
         entries[i].content = trimmed
         entries[i].entryDate = date
         entries[i].mood = mood
+        entries[i].emoji = emoji
+        entries[i].imageAssetPaths = imageAssetPaths
         entries[i].updatedAt = .now
         persist()
     }
@@ -103,6 +107,13 @@ final class DiaryViewModel: ObservableObject {
         var urls: [URL] = []
 
         for entry in visibleEntries {
+            for path in entry.imageAssetPaths {
+                let localURL = localImageURL(for: path)
+                if !seen.contains(localURL) {
+                    seen.insert(localURL)
+                    urls.append(localURL)
+                }
+            }
             for url in extractImageURLs(from: entry.content) where !seen.contains(url) {
                 seen.insert(url)
                 urls.append(url)
@@ -112,6 +123,11 @@ final class DiaryViewModel: ObservableObject {
         return urls
     }
 
+
+    private func localImageURL(for relativePath: String) -> URL {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
+        return docs.appendingPathComponent(relativePath)
+    }
     private func extractImageURLs(from text: String) -> [URL] {
         guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
             return []
