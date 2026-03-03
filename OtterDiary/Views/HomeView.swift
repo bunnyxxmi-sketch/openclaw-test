@@ -63,6 +63,17 @@ struct HomeView: View {
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
                 SettingsView(
+                    iCloudSyncEnabled: Binding(
+                        get: { viewModel.isICloudSyncEnabled },
+                        set: { enabled in
+                            viewModel.toggleICloudSync(enabled)
+                            if enabled, let note = viewModel.firstEnableNoticeIfNeeded() {
+                                feedback = StandardFeedback(title: "iCloud 同步", message: note)
+                            }
+                        }
+                    ),
+                    iCloudStatusTitle: viewModel.iCloudSyncState.title,
+                    iCloudStatusDetail: viewModel.iCloudSyncState.detail,
                     onExportJSON: { doExport(.json) },
                     onExportMarkdown: { doExport(.markdown) }
                 )
@@ -91,6 +102,11 @@ struct HomeView: View {
         }
         .alert("搜索功能即将上线", isPresented: $showingSearchHint) {
             Button("好的", role: .cancel) {}
+        }
+        .onChange(of: viewModel.latestSyncMessage) { _, msg in
+            guard let msg else { return }
+            feedback = StandardFeedback(title: "iCloud 同步提示", message: msg)
+            viewModel.latestSyncMessage = nil
         }
         .navigationDestination(for: DiaryEntry.self) { entry in
             DiaryEntryDetailView(entry: entry)
@@ -308,11 +324,30 @@ private struct ScrollOffsetPreferenceKey: PreferenceKey {
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Binding var iCloudSyncEnabled: Bool
+    let iCloudStatusTitle: String
+    let iCloudStatusDetail: String
     let onExportJSON: () -> Void
     let onExportMarkdown: () -> Void
 
     var body: some View {
         List {
+            Section {
+                Toggle("iCloud 同步", isOn: $iCloudSyncEnabled)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("状态：\(iCloudStatusTitle)")
+                        .font(.subheadline.weight(.semibold))
+                    Text(iCloudStatusDetail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+            } header: {
+                Text("云端同步")
+            } footer: {
+                Text("关闭后仅使用本地 JSON；开启后自动与 iCloud 文稿同步。")
+            }
+
             Section {
                 Button { onExportJSON(); dismiss() } label: { Label("导出 JSON 到 Files", systemImage: "doc.badge.arrow.up") }
                 Button { onExportMarkdown(); dismiss() } label: { Label("导出 Markdown 到 Files", systemImage: "doc.text") }

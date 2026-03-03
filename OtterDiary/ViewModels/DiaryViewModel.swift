@@ -4,15 +4,22 @@ import Foundation
 final class DiaryViewModel: ObservableObject {
     @Published var entries: [DiaryEntry] = []
     @Published var isLoading: Bool = true
+    @Published var isICloudSyncEnabled: Bool = false
+    @Published var iCloudSyncState: ICloudSyncState = .disabled
+    @Published var latestSyncMessage: String?
 
     let onThisDayService = OnThisDayService()
     let exportService = ExportService()
     private let store = DiaryStore()
 
     init() {
+        isICloudSyncEnabled = store.isICloudSyncEnabled
+        iCloudSyncState = store.syncState()
+
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 180_000_000)
             self.entries = store.load().sorted { $0.entryDate > $1.entryDate }
+            self.iCloudSyncState = store.syncState()
             self.isLoading = false
         }
     }
@@ -39,7 +46,27 @@ final class DiaryViewModel: ObservableObject {
     }
 
     func persist() {
-        store.save(entries)
+        let state = store.save(entries)
+        iCloudSyncState = state
+        if case .failed(let reason) = state {
+            latestSyncMessage = reason
+        }
+    }
+
+    func toggleICloudSync(_ enabled: Bool) {
+        let state = store.setICloudEnabled(enabled)
+        isICloudSyncEnabled = enabled
+        iCloudSyncState = state
+        entries = store.load().sorted { $0.entryDate > $1.entryDate }
+        if case .failed(let reason) = state {
+            latestSyncMessage = reason
+        }
+    }
+
+    func firstEnableNoticeIfNeeded() -> String? {
+        guard store.shouldShowFirstEnableNotice else { return nil }
+        store.markFirstEnableNoticeShown()
+        return "已开启 iCloud 同步：日记仍可离线使用；当网络可用时会自动同步，多端冲突按最近更新时间覆盖。"
     }
 
     var visibleEntries: [DiaryEntry] {
