@@ -3,13 +3,18 @@ import Foundation
 @MainActor
 final class DiaryViewModel: ObservableObject {
     @Published var entries: [DiaryEntry] = []
+    @Published var isLoading: Bool = true
 
     let onThisDayService = OnThisDayService()
     let exportService = ExportService()
     private let store = DiaryStore()
 
     init() {
-        self.entries = store.load().sorted { $0.entryDate > $1.entryDate }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 180_000_000)
+            self.entries = store.load().sorted { $0.entryDate > $1.entryDate }
+            self.isLoading = false
+        }
     }
 
     func addEntry(title: String, content: String, date: Date, mood: Mood?) {
