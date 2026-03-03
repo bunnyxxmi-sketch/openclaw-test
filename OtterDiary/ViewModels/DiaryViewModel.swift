@@ -11,6 +11,7 @@ final class DiaryViewModel: ObservableObject {
     let onThisDayService = OnThisDayService()
     let exportService = ExportService()
     private let store = DiaryStore()
+    private let entryContextService = EntryContextService()
 
     init() {
         isICloudSyncEnabled = store.isICloudSyncEnabled
@@ -25,7 +26,7 @@ final class DiaryViewModel: ObservableObject {
         }
     }
 
-    func addEntry(title: String, content: String, date: Date, mood: Mood?, emoji: String?, tags: [String] = [], location: String? = nil, weather: String? = nil, imageAssetPaths: [String]) {
+    func addEntry(title: String, content: String, date: Date, mood: Mood?, emoji: String?, tags: [String] = [], imageAssetPaths: [String]) {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -35,13 +36,14 @@ final class DiaryViewModel: ObservableObject {
             content: trimmed,
             mood: mood,
             emoji: emoji,
-            location: location?.trimmingCharacters(in: .whitespacesAndNewlines),
-            weather: weather?.trimmingCharacters(in: .whitespacesAndNewlines),
+            location: EntryContext.fallback.location,
+            weather: EntryContext.fallback.weather,
             tags: normalizedTags(inputTags: tags, content: trimmed),
             imageAssetPaths: imageAssetPaths
         )
         entries.insert(entry, at: 0)
         persist()
+        Task { await enrichEntryContext(for: entry.id) }
     }
 
     func deleteEntry(id: UUID) {
@@ -51,7 +53,7 @@ final class DiaryViewModel: ObservableObject {
         persist()
     }
 
-    func updateEntry(id: UUID, title: String, content: String, date: Date, mood: Mood?, emoji: String?, tags: [String] = [], location: String? = nil, weather: String? = nil, imageAssetPaths: [String]) {
+    func updateEntry(id: UUID, title: String, content: String, date: Date, mood: Mood?, emoji: String?, tags: [String] = [], imageAssetPaths: [String]) {
         guard let i = entries.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -61,12 +63,13 @@ final class DiaryViewModel: ObservableObject {
         entries[i].entryDate = date
         entries[i].mood = mood
         entries[i].emoji = emoji
-        entries[i].location = location?.trimmingCharacters(in: .whitespacesAndNewlines)
-        entries[i].weather = weather?.trimmingCharacters(in: .whitespacesAndNewlines)
+        entries[i].location = EntryContext.fallback.location
+        entries[i].weather = EntryContext.fallback.weather
         entries[i].tags = normalizedTags(inputTags: tags, content: trimmed)
         entries[i].imageAssetPaths = imageAssetPaths
         entries[i].updatedAt = .now
         persist()
+        Task { await enrichEntryContext(for: id) }
     }
 
     func persist() {
@@ -133,6 +136,16 @@ final class DiaryViewModel: ObservableObject {
 
 
 
+
+
+    private func enrichEntryContext(for id: UUID) async {
+        let context = await entryContextService.fetchContext()
+        guard let i = entries.firstIndex(where: { $0.id == id }) else { return }
+        entries[i].location = context.location
+        entries[i].weather = context.weather
+        entries[i].updatedAt = .now
+        persist()
+    }
 
     private func migrateTagsIfNeeded(in loaded: [DiaryEntry]) -> [DiaryEntry] {
         var didChange = false

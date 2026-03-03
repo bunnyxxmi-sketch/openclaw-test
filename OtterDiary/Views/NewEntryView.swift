@@ -24,7 +24,7 @@ struct NewEntryView: View {
     @Environment(\.dismiss) private var dismiss
 
     let mode: Mode
-    let onSave: (_ title: String, _ content: String, _ date: Date, _ mood: Mood?, _ emoji: String?, _ tags: [String], _ location: String?, _ weather: String?, _ imageAssetPaths: [String]) -> Void
+    let onSave: (_ title: String, _ content: String, _ date: Date, _ mood: Mood?, _ emoji: String?, _ tags: [String], _ imageAssetPaths: [String]) -> Void
 
     @State private var title: String
     @State private var content: String
@@ -35,8 +35,6 @@ struct NewEntryView: View {
     @State private var pickedPhotoItem: PhotosPickerItem?
     @State private var tags: [String]
     @State private var newTagText: String = ""
-    @State private var location: String
-    @State private var weather: String
     @State private var showDraftDialog = false
     @FocusState private var isTagInputFocused: Bool
 
@@ -54,10 +52,8 @@ struct NewEntryView: View {
         initialMood: Mood? = nil,
         initialEmoji: String? = nil,
         initialTags: [String] = [],
-        initialLocation: String? = nil,
-        initialWeather: String? = nil,
         initialImageAssetPaths: [String] = [],
-        onSave: @escaping (_ title: String, _ content: String, _ date: Date, _ mood: Mood?, _ emoji: String?, _ tags: [String], _ location: String?, _ weather: String?, _ imageAssetPaths: [String]) -> Void
+        onSave: @escaping (_ title: String, _ content: String, _ date: Date, _ mood: Mood?, _ emoji: String?, _ tags: [String], _ imageAssetPaths: [String]) -> Void
     ) {
         self.mode = mode
         self.onSave = onSave
@@ -67,8 +63,6 @@ struct NewEntryView: View {
         _mood = State(initialValue: initialMood)
         _selectedEmoji = State(initialValue: initialEmoji)
         _tags = State(initialValue: DiaryEntry.normalizedTags(initialTags))
-        _location = State(initialValue: initialLocation ?? "")
-        _weather = State(initialValue: initialWeather ?? "")
         _imageAssetPaths = State(initialValue: initialImageAssetPaths)
     }
 
@@ -247,19 +241,6 @@ struct NewEntryView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DiaryColor.strokeStrong, lineWidth: 1))
 
-            TextField("地点（可选）", text: $location)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(DiaryColor.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DiaryColor.strokeStrong, lineWidth: 1))
-
-            TextField("天气（可选）", text: $weather)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(DiaryColor.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DiaryColor.strokeStrong, lineWidth: 1))
         }
         .padding(16)
         .cardStyle()
@@ -291,8 +272,6 @@ struct NewEntryView: View {
                     mood,
                     selectedEmoji,
                     tags,
-                    location.trimmedToNil,
-                    weather.trimmedToNil,
                     imageAssetPaths
                 )
                 clearDraft()
@@ -389,9 +368,3 @@ struct NewEntryView: View {
     }
 }
 
-private extension String {
-    var trimmedToNil: String? {
-        let value = trimmingCharacters(in: .whitespacesAndNewlines)
-        return value.isEmpty ? nil : value
-    }
-}

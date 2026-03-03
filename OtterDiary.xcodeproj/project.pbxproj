@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2DC88CBFFD9D5DDCEDD70662 /* OnThisDayService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D586C79C0B15AFD785D8580 /* OnThisDayService.swift */; };
+		4363678CCA97F1D9A9A92FBC /* EntryContextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 757AF94061A7EA62E465A1F7 /* EntryContextService.swift */; };
 		5DCB08459A893745165A6440 /* DiaryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF81A39A74CC381E23328F8D /* DiaryEntry.swift */; };
 		794FE949494C00EA84F92084 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51A06D9689C6B311183F6B6C /* HomeView.swift */; };
 		8282F013CC391D27546CFDAA /* OtterDiaryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410F2E6711201D02C154C6EA /* OtterDiaryApp.swift */; };
@@ -38,6 +39,7 @@
 		47859595745CEF63B097CDE6 /* OnThisDayServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnThisDayServiceTests.swift; sourceTree = "<group>"; };
 		51A06D9689C6B311183F6B6C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		582250C4CA6F3AA052568E2F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		757AF94061A7EA62E465A1F7 /* EntryContextService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryContextService.swift; sourceTree = "<group>"; };
 		82DE52D51FF2E5433D826667 /* DiaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryStore.swift; sourceTree = "<group>"; };
 		8EFF77C2B9B264F6398A9E9D /* OtterDiary.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OtterDiary.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A09787E7DA49D98E0CC1BB0E /* DiaryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryViewModel.swift; sourceTree = "<group>"; };
@@ -59,6 +61,7 @@
 			isa = PBXGroup;
 			children = (
 				82DE52D51FF2E5433D826667 /* DiaryStore.swift */,
+				757AF94061A7EA62E465A1F7 /* EntryContextService.swift */,
 				C29320250BE588D0F787DED6 /* ExportService.swift */,
 				1D586C79C0B15AFD785D8580 /* OnThisDayService.swift */,
 			);
@@ -222,6 +225,7 @@
 				5DCB08459A893745165A6440 /* DiaryEntry.swift in Sources */,
 				FCAC8641D872EE6A0A9A577C /* DiaryStore.swift in Sources */,
 				98EE61212CECC691C276641F /* DiaryViewModel.swift in Sources */,
+				4363678CCA97F1D9A9A92FBC /* EntryContextService.swift in Sources */,
 				E18C7CB97AF214C37E9023D0 /* ExportService.swift in Sources */,
 				794FE949494C00EA84F92084 /* HomeView.swift in Sources */,
 				CC670F204131BE7BDC71384D /* NewEntryView.swift in Sources */,

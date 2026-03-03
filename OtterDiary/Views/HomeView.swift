@@ -21,6 +21,7 @@ struct HomeView: View {
     @State private var exportFormat: ExportFormat = .json
     @State private var feedback: StandardFeedback?
     @State private var showingSearchSheet = false
+    @AppStorage(AppAccentColor.storageKey) private var accentColorRawValue: String = AppAccentColor.defaultOption.rawValue
     
     @State private var timelineTopToken = UUID()
     @State private var fabVisible = true
@@ -53,8 +54,8 @@ struct HomeView: View {
         .animation(DiaryStyle.Motion.selectionSpring, value: selectedDiaryTab)
         .sheet(isPresented: $showingNewEntry) {
             NavigationStack {
-                NewEntryView(mode: .create) { title, content, date, mood, emoji, tags, location, weather, imageAssetPaths in
-                    viewModel.addEntry(title: title, content: content, date: date, mood: mood, emoji: emoji, tags: tags, location: location, weather: weather, imageAssetPaths: imageAssetPaths)
+                NewEntryView(mode: .create) { title, content, date, mood, emoji, tags, imageAssetPaths in
+                    viewModel.addEntry(title: title, content: content, date: date, mood: mood, emoji: emoji, tags: tags, imageAssetPaths: imageAssetPaths)
                     selectedBottomTab = .diary
                     selectedDiaryTab = .timeline
                     timelineTopToken = UUID()
@@ -73,11 +74,9 @@ struct HomeView: View {
                     initialMood: entry.mood,
                     initialEmoji: entry.emoji,
                     initialTags: entry.displayTags,
-                    initialLocation: entry.location,
-                    initialWeather: entry.weather,
                     initialImageAssetPaths: entry.imageAssetPaths
-                ) { title, content, date, mood, emoji, tags, location, weather, imageAssetPaths in
-                    viewModel.updateEntry(id: entry.id, title: title, content: content, date: date, mood: mood, emoji: emoji, tags: tags, location: location, weather: weather, imageAssetPaths: imageAssetPaths)
+                ) { title, content, date, mood, emoji, tags, imageAssetPaths in
+                    viewModel.updateEntry(id: entry.id, title: title, content: content, date: date, mood: mood, emoji: emoji, tags: tags, imageAssetPaths: imageAssetPaths)
                 }
             }
             .presentationDetents([.large])
@@ -98,7 +97,8 @@ struct HomeView: View {
                     iCloudStatusTitle: viewModel.iCloudSyncState.title,
                     iCloudStatusDetail: viewModel.iCloudSyncState.detail,
                     onExportJSON: { doExport(.json) },
-                    onExportMarkdown: { doExport(.markdown) }
+                    onExportMarkdown: { doExport(.markdown) },
+                    accentColorRawValue: $accentColorRawValue
                 )
             }
         }
@@ -263,16 +263,16 @@ struct HomeView: View {
     }
 
     private var lifeLineContent: some View {
-        let grouped = Dictionary(grouping: viewModel.visibleEntries) { Calendar.current.component(.year, from: $0.entryDate) }
-        let years = grouped.keys.sorted(by: >)
+        let grouped = Dictionary(grouping: viewModel.visibleEntries) { $0.entryDate.formatted(.dateTime.year().month(.twoDigits)) }
+        let months = grouped.keys.sorted(by: >)
 
         return VStack(spacing: DiaryStyle.Spacing.sectionGap) {
-            if years.isEmpty {
+            if months.isEmpty {
                 DiaryEmptyCard()
             } else {
-                ForEach(years, id: \.self) { year in
-                    let items = (grouped[year] ?? []).sorted { $0.entryDate > $1.entryDate }
-                    LifeYearSection(year: year, entries: items)
+                ForEach(months, id: \.self) { month in
+                    let items = (grouped[month] ?? []).sorted { $0.entryDate > $1.entryDate }
+                    LifeMonthSection(monthKey: month, entries: items)
                 }
             }
         }
@@ -368,6 +368,7 @@ struct SettingsView: View {
     let iCloudStatusDetail: String
     let onExportJSON: () -> Void
     let onExportMarkdown: () -> Void
+    @Binding var accentColorRawValue: String
 
     var body: some View {
         List {
@@ -385,6 +386,25 @@ struct SettingsView: View {
                 Text("云端同步")
             } footer: {
                 Text("关闭后仅使用本地 JSON；开启后自动与 iCloud 文稿同步。")
+            }
+
+
+            Section {
+                Picker("主题重点色", selection: $accentColorRawValue) {
+                    ForEach(AppAccentColor.allCases) { color in
+                        HStack {
+                            Circle()
+                                .fill(color.color)
+                                .frame(width: 14, height: 14)
+                            Text(color.title)
+                        }
+                        .tag(color.rawValue)
+                    }
+                }
+            } header: {
+                Text("外观")
+            } footer: {
+                Text("修改后会立即应用到全局按钮与高亮色。")
             }
 
             Section {
@@ -683,7 +703,7 @@ struct DiaryTimelineCard: View {
                 menuButton
             }
         }
-        .padding(16)
+        .padding(20)
         .cardStyle()
         .confirmationDialog("删除这条日记？", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {
             Button("删除", role: .destructive, action: onDelete)
@@ -729,7 +749,7 @@ struct DiaryTimelineCard: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .font(.caption.weight(.bold))
+                .font(.subheadline.weight(.bold))
                 .foregroundStyle(.secondary)
                 .frame(width: 28, height: 28)
                 .background(DiaryColor.controlBackground)
@@ -772,7 +792,7 @@ struct CalendarMonthGridCard: View {
     let entries: [DiaryEntry]
     let onSelectDate: (Date) -> Void
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 7)
     private var monthDays: [Date?] {
         let cal = Calendar.current
         guard let monthRange = cal.range(of: .day, in: .month, for: monthAnchor),
@@ -801,7 +821,7 @@ struct CalendarMonthGridCard: View {
                 }
             }
 
-            LazyVGrid(columns: columns, spacing: 8) {
+            LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(["日", "一", "二", "三", "四", "五", "六"], id: \.self) { name in
                     Text(name).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
@@ -833,7 +853,7 @@ struct CalendarMonthGridCard: View {
                             .buttonStyle(.plain)
                         }
                     } else {
-                        Color.clear.frame(height: 52)
+                        Color.clear.frame(height: 72)
                     }
                 }
             }
@@ -852,7 +872,7 @@ struct CalendarMonthGridCard: View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(DiaryColor.surfaceSecondary)
-                .frame(height: 52)
+                .frame(height: 72)
 
             if let imageURL {
                 AsyncImage(url: imageURL) { phase in
@@ -867,18 +887,19 @@ struct CalendarMonthGridCard: View {
                         EmptyView()
                     }
                 }
-                .frame(height: 52)
+                .frame(height: 72)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
 
             Text("\(Calendar.current.component(.day, from: day))")
-                .font(.caption.weight(.bold))
-                .padding(5)
+                .font(.subheadline.weight(.bold))
+                .padding(.horizontal, 7)
+                .padding(.vertical, 5)
                 .background(.ultraThinMaterial, in: Capsule())
                 .padding(4)
 
             if hasRecord {
-                Circle().fill(Color.green).frame(width: 6, height: 6).padding(6).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                Circle().fill(Color.green).frame(width: 8, height: 8).padding(8).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             }
         }
         .overlay(
@@ -990,25 +1011,21 @@ if let title = entry.displayTitle {
 }
 
 
-struct LifeYearSection: View {
-    let year: Int
+struct LifeMonthSection: View {
+    let monthKey: String
     let entries: [DiaryEntry]
-
-    private var yearLabel: String {
-        "\(String(year))年"
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(yearLabel)
-                    .font(.headline)
+                Text(monthKey)
+                    .font(.headline.monospacedDigit())
                 Spacer()
                 Text("\(entries.count) 条")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            ForEach(entries.prefix(4)) { entry in
+            ForEach(entries.prefix(6)) { entry in
                 HStack(alignment: .top) {
                     Circle().fill(DiaryColor.tintStrong).frame(width: 8, height: 8).padding(.top, 5)
                     VStack(alignment: .leading, spacing: 4) {
@@ -1017,7 +1034,7 @@ struct LifeYearSection: View {
                         } else {
                             Text(entry.content).font(.subheadline.weight(.semibold)).lineLimit(1)
                         }
-                        Text(entry.entryDate.formatted(.dateTime.month().day())).font(.caption).foregroundStyle(.secondary)
+                        Text(entry.entryDate.formatted(.dateTime.month().day().hour().minute())).font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
                 }
@@ -1373,7 +1390,7 @@ struct ActionGridCard: View {
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 12)
@@ -1527,8 +1544,8 @@ extension DiaryEntry {
     }
 
     var locationWeatherText: String {
-        let place = (location?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "待补充地点"
-        let weatherText = (weather?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "☀️ 52°F"
+        let place = (location?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "未知地点"
+        let weatherText = (weather?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "天气不可用"
         return "📍\(place) · \(weatherText)"
     }
 
@@ -1570,6 +1587,45 @@ private extension String {
     }
 }
 
+
+enum AppAccentColor: String, CaseIterable, Identifiable {
+    case ocean
+    case coral
+    case mint
+    case violet
+    case amber
+
+    static let storageKey = "app_accent_color"
+    static let defaultOption: AppAccentColor = .ocean
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .ocean: return "海蓝"
+        case .coral: return "珊瑚"
+        case .mint: return "薄荷"
+        case .violet: return "紫罗兰"
+        case .amber: return "琥珀"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .ocean: return Color(hex: 0x3B82F6)
+        case .coral: return Color(hex: 0xF97360)
+        case .mint: return Color(hex: 0x10B981)
+        case .violet: return Color(hex: 0x8B5CF6)
+        case .amber: return Color(hex: 0xF59E0B)
+        }
+    }
+
+    static var current: AppAccentColor {
+        let raw = UserDefaults.standard.string(forKey: storageKey) ?? defaultOption.rawValue
+        return AppAccentColor(rawValue: raw) ?? defaultOption
+    }
+}
+
 enum DiaryColor {
     static let pageBackground = Color(uiColor: .systemGroupedBackground)
     static let surfacePrimary = Color(uiColor: .secondarySystemGroupedBackground)
@@ -1577,7 +1633,7 @@ enum DiaryColor {
     static let controlBackground = Color(uiColor: .secondarySystemBackground)
     static let imagePlaceholder = Color(uiColor: .quaternarySystemFill)
     static let bottomBarBackground = Color(uiColor: .systemGray6).opacity(0.96)
-    static let tintStrong = Color.primary
+    static var tintStrong: Color { AppAccentColor.current.color }
     static let onTint = Color(uiColor: .systemBackground)
     static let avatarBackground = Color(uiColor: .systemBlue).opacity(0.25)
     static let strokeSoft = Color.primary.opacity(0.08)
