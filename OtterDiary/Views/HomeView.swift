@@ -20,21 +20,31 @@ struct HomeView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(hex: 0xF3F4F6)
-                .ignoresSafeArea()
+            Color(hex: 0xF2F3F5).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                topHeader
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 14)
+                DiaryTopHeader(
+                    title: headerTitle,
+                    onMenu: {},
+                    onSearch: { showingSearchHint = true },
+                    onSettings: { showingSettings = true }
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 10)
 
                 contentArea
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .trailing)), removal: .opacity))
             }
 
-            bottomOverlay
+            DiaryBottomNav(selected: $selectedBottomTab) {
+                showingNewEntry = true
+            }
+            .safeAreaPadding(.bottom, 4)
         }
+        .animation(.spring(response: 0.3, dampingFraction: 0.88), value: selectedBottomTab)
+        .animation(.easeInOut(duration: 0.2), value: selectedDiaryTab)
         .sheet(isPresented: $showingNewEntry) {
             NavigationStack {
                 NewEntryView { title, content, date, mood in
@@ -42,6 +52,7 @@ struct HomeView: View {
                 }
             }
             .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
@@ -65,174 +76,61 @@ struct HomeView: View {
         }
     }
 
-    private var topHeader: some View {
-        HStack(spacing: 10) {
-            iconCircleButton(systemName: "line.3.horizontal", action: {})
-
-            Spacer(minLength: 8)
-
-            Text(headerTitle)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-
-            Spacer(minLength: 8)
-
-            HStack(spacing: 8) {
-                iconCircleButton(systemName: "magnifyingglass") {
-                    showingSearchHint = true
-                }
-                iconCircleButton(systemName: "gearshape") {
-                    showingSettings = true
-                }
-            }
-        }
-    }
-
     private var headerTitle: String {
         switch selectedBottomTab {
-        case .diary: return "日记"
+        case .diary: return "海獭日记"
         case .calendar: return "日历"
         case .profile: return "用户"
         }
     }
 
+    @ViewBuilder
     private var contentArea: some View {
-        Group {
-            switch selectedBottomTab {
-            case .diary:
-                diaryHome
-            case .calendar:
-                calendarPage
-            case .profile:
-                profilePage
-            }
+        switch selectedBottomTab {
+        case .diary:
+            diaryHome
+        case .calendar:
+            calendarPage
+        case .profile:
+            profilePage
         }
     }
 
     private var diaryHome: some View {
-        VStack(spacing: 12) {
-            diaryTabBar
+        VStack(spacing: 10) {
+            DiarySecondaryTabs(selected: $selectedDiaryTab)
                 .padding(.horizontal, 20)
 
-            Group {
-                switch selectedDiaryTab {
-                case .timeline:
-                    timelinePage
-                case .onThisDay:
-                    onThisDayPage
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 110)
-        }
-    }
-
-    private var diaryTabBar: some View {
-        HStack(spacing: 6) {
-            ForEach(DiaryTab.allCases) { tab in
-                Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) {
-                        selectedDiaryTab = tab
-                    }
-                } label: {
-                    Text(tab.title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(selectedDiaryTab == tab ? .primary : .secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background {
-                            if selectedDiaryTab == tab {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(.white)
-                                    .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
+            ScrollView {
+                VStack(spacing: 12) {
+                    switch selectedDiaryTab {
+                    case .timeline:
+                        if viewModel.visibleEntries.isEmpty {
+                            DiaryEmptyCard()
+                        } else {
+                            ForEach(viewModel.visibleEntries) { entry in
+                                DiaryTimelineCard(entry: entry) {
+                                    viewModel.deleteEntry(id: entry.id)
+                                }
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
                             }
                         }
+                    case .onThisDay:
+                        onThisDayContent
+                    case .life, .books:
+                        comingSoonCard
+                    }
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.top, 2)
+                .padding(.bottom, 120)
             }
+            .scrollIndicators(.hidden)
         }
-        .padding(6)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.white.opacity(0.72))
-        )
+        .animation(.easeInOut(duration: 0.25), value: selectedDiaryTab)
     }
 
-    private var onThisDayPage: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                dateNavigatorCard
-                onThisDayFilterCard
-                onThisDayListCard
-            }
-            .padding(.top, 2)
-        }
-        .scrollIndicators(.hidden)
-    }
-
-    private var dateNavigatorCard: some View {
-        HStack {
-            Button {
-                selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 32, height: 32)
-                    .background(Color(hex: 0xF3F4F6))
-                    .clipShape(Circle())
-            }
-
-            Spacer()
-
-            Button("今天") {
-                selectedDate = Calendar.current.startOfDay(for: .now)
-            }
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.secondary)
-
-            VStack(spacing: 3) {
-                Text(selectedDate.formatted(.dateTime.year().month(.wide).day()))
-                    .font(.headline)
-                Text("同一天回顾")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            Button {
-                selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 32, height: 32)
-                    .background(Color(hex: 0xF3F4F6))
-                    .clipShape(Circle())
-            }
-        }
-        .padding(16)
-        .cardStyle()
-    }
-
-    private var onThisDayFilterCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("筛选")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Picker("模式", selection: $onThisDayMode) {
-                ForEach(OnThisDayMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
-        .padding(16)
-        .cardStyle()
-    }
-
-    private var onThisDayListCard: some View {
+    private var onThisDayContent: some View {
         let entries: [DiaryEntry] = {
             switch onThisDayMode {
             case .lastYear:
@@ -250,91 +148,54 @@ struct HomeView: View {
             }
         }()
 
-        return VStack(alignment: .leading, spacing: 12) {
-            Text(onThisDayMode == .lastYear ? "去年今日" : "近五年")
-                .font(.headline)
-
-            if entries.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "calendar.badge.exclamationmark")
-                        .font(.system(size: 24))
-                        .foregroundStyle(.secondary)
-                    Text("这一天还没有记录")
-                        .font(.subheadline.weight(.semibold))
-                    Text("点右下角 + 写下今天，未来会在这里重逢。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(entries) { entry in
-                        NavigationLink {
-                            OnThisDayListView(entries: entries)
-                        } label: {
-                            OnThisDayEntryRow(entry: entry)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
+        return VStack(spacing: 12) {
+            OnThisDayDateNavigatorCard(selectedDate: $selectedDate)
+            OnThisDayFilterCard(mode: $onThisDayMode)
+            OnThisDayEntriesCard(title: onThisDayMode == .lastYear ? "去年今日" : "近五年", entries: entries)
         }
-        .padding(16)
-        .cardStyle()
     }
 
-    private var timelinePage: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                if viewModel.visibleEntries.isEmpty {
-                    emptyTimeline
-                } else {
-                    ForEach(viewModel.visibleEntries) { entry in
-                        TimelineEntryCard(entry: entry) {
-                            viewModel.deleteEntry(id: entry.id)
-                        }
-                    }
-                }
-            }
-            .padding(.top, 2)
-        }
-        .scrollIndicators(.hidden)
-    }
-
-    private var emptyTimeline: some View {
+    private var comingSoonCard: some View {
         VStack(spacing: 10) {
-            Image(systemName: "book.closed")
-                .font(.system(size: 28))
+            Image(systemName: "clock.badge")
+                .font(.system(size: 22))
                 .foregroundStyle(.secondary)
-            Text("还没有日记")
+            Text("正在构建中")
                 .font(.headline)
-            Text("点右下角 + 开始记录今天。")
+            Text("先使用「时间线」和「那年今日」。")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
+        .frame(maxWidth: .infinity)
         .cardStyle()
     }
 
     private var calendarPage: some View {
         ScrollView {
             VStack(spacing: 12) {
-                CalendarDateCard(selectedDate: $selectedCalendarDate)
-
-                CalendarDayEntriesCard(
-                    date: selectedCalendarDate,
-                    entries: entries(on: selectedCalendarDate)
-                )
-
-                CalendarAllImagesSection(groupedImages: groupedImagesByMonth)
+                CalendarDateBrowserCard(selectedDate: $selectedCalendarDate)
+                CalendarDayContentCard(date: selectedCalendarDate, entries: entries(on: selectedCalendarDate))
+                CalendarImageAggregationCard(groupedImages: groupedImagesByMonth)
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 110)
+            .padding(.bottom, 120)
+            .padding(.top, 2)
         }
         .scrollIndicators(.hidden)
+    }
+
+    private var profilePage: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                ProfileSummaryCard(entriesCount: viewModel.visibleEntries.count, imageCount: viewModel.allImageURLs.count) {
+                    showingSettings = true
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 120)
+            .padding(.top, 2)
+        }
     }
 
     private func entries(on date: Date) -> [DiaryEntry] {
@@ -368,106 +229,6 @@ struct HomeView: View {
         }
     }
 
-    private var profilePage: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("我的统计")
-                        .font(.headline)
-
-                    HStack(spacing: 10) {
-                        StatCard(title: "日记总数", value: "\(viewModel.visibleEntries.count)")
-                        StatCard(title: "图片回忆", value: "\(viewModel.allImageURLs.count)")
-                    }
-
-                    Button {
-                        showingSettings = true
-                    } label: {
-                        Label("打开设置与导出", systemImage: "square.and.arrow.up")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color(hex: 0xF3F4F6))
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(16)
-                .cardStyle()
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 110)
-        }
-        .scrollIndicators(.hidden)
-    }
-
-    private var bottomOverlay: some View {
-        HStack(alignment: .bottom) {
-            bottomNavBar
-            Spacer(minLength: 10)
-            addButton
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 12)
-        .safeAreaPadding(.bottom, 6)
-    }
-
-    private var bottomNavBar: some View {
-        HStack(spacing: 4) {
-            ForEach(BottomTab.allCases) { tab in
-                Button {
-                    selectedBottomTab = tab
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 16, weight: .semibold))
-                        Text(tab.title)
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .foregroundStyle(selectedBottomTab == tab ? .primary : .secondary)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(
-            Capsule(style: .continuous)
-                .fill(.white)
-                .shadow(color: .black.opacity(0.08), radius: 12, y: 5)
-        )
-    }
-
-    private var addButton: some View {
-        Button {
-            showingNewEntry = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 58, height: 58)
-                .background(Color.black)
-                .clipShape(Circle())
-                .shadow(color: .black.opacity(0.22), radius: 14, y: 7)
-        }
-        .accessibilityLabel("新建日记")
-    }
-
-    private func iconCircleButton(systemName: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 36, height: 36)
-                .background(.white)
-                .clipShape(Circle())
-                .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
-        }
-    }
-
     private func doExport(_ format: ExportFormat) {
         do {
             exportFormat = format
@@ -476,359 +237,6 @@ struct HomeView: View {
         } catch {
             exportError = true
         }
-    }
-}
-
-private struct CalendarDateCard: View {
-    @Binding var selectedDate: Date
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("按日期浏览")
-                    .font(.headline)
-                Spacer()
-                Text(selectedDate.formatted(.dateTime.year().month().day()))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-
-            DatePicker("", selection: $selectedDate, displayedComponents: .date)
-                .datePickerStyle(.graphical)
-                .labelsHidden()
-        }
-        .padding(16)
-        .cardStyle()
-    }
-}
-
-private struct CalendarDayEntriesCard: View {
-    let date: Date
-    let entries: [DiaryEntry]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("当日记录")
-                .font(.headline)
-
-            if entries.isEmpty {
-                Text("这一天没有记录")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 6)
-            } else {
-                ForEach(entries) { entry in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(entry.title.isEmpty ? "无标题" : entry.title)
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(1)
-
-                        if let image = entry.extractImageURLs().first {
-                            AsyncImage(url: image) { phase in
-                                switch phase {
-                                case .empty:
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(hex: 0xF3F4F6))
-                                        .frame(height: 140)
-                                        .overlay { ProgressView() }
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(height: 140)
-                                        .frame(maxWidth: .infinity)
-                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                case .failure:
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(hex: 0xF3F4F6))
-                                        .frame(height: 140)
-                                        .overlay { Image(systemName: "photo") }
-                                @unknown default:
-                                    EmptyView()
-                                }
-                            }
-                        }
-
-                        Text(entry.content)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                    .padding(12)
-                    .background(Color(hex: 0xF7F8FA))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-            }
-        }
-        .padding(16)
-        .cardStyle()
-    }
-}
-
-private struct CalendarAllImagesSection: View {
-    let groupedImages: [(String, [URL])]
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("所有图片")
-                .font(.headline)
-
-            if groupedImages.isEmpty {
-                Text("暂无图片")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 6)
-            } else {
-                ForEach(groupedImages, id: \.0) { group in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(group.0)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(group.1, id: \.absoluteString) { url in
-                                AsyncImage(url: url) { phase in
-                                    switch phase {
-                                    case .empty:
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(.gray.opacity(0.12))
-                                            .overlay { ProgressView() }
-                                    case .success(let image):
-                                        image
-                                            .resizable()
-                                            .scaledToFill()
-                                    case .failure:
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(.gray.opacity(0.12))
-                                            .overlay { Image(systemName: "photo") }
-                                    @unknown default:
-                                        EmptyView()
-                                    }
-                                }
-                                .aspectRatio(1, contentMode: .fit)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .cardStyle()
-    }
-}
-
-private struct OnThisDayEntryRow: View {
-    let entry: DiaryEntry
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(entry.title.isEmpty ? "无标题" : entry.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                Text(entry.entryDate.formatted(.dateTime.year().month().day()))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-
-            Text(entry.content)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(hex: 0xF7F8FA))
-        )
-    }
-}
-
-private struct TimelineEntryCard: View {
-    let entry: DiaryEntry
-    let onDelete: () -> Void
-
-    var firstImageURL: URL? {
-        entry.extractImageURLs().first
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(entry.title.isEmpty ? "无标题" : entry.title)
-                        .font(.headline)
-                    Text(entry.entryDate.formatted(.dateTime.year().month(.wide).day()))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 8)
-
-                Menu {
-                    Button(role: .destructive, action: onDelete) {
-                        Label("删除", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.body.weight(.bold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 26, height: 26)
-                        .background(Color(hex: 0xF3F4F6))
-                        .clipShape(Circle())
-                }
-            }
-
-            if let imageURL = firstImageURL {
-                AsyncImage(url: imageURL) { phase in
-                    switch phase {
-                    case .empty:
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color(hex: 0xF3F4F6))
-                            .frame(height: 180)
-                            .overlay { ProgressView() }
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(height: 180)
-                            .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    case .failure:
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color(hex: 0xF3F4F6))
-                            .frame(height: 180)
-                            .overlay {
-                                Image(systemName: "photo")
-                                    .foregroundStyle(.secondary)
-                            }
-                    @unknown default:
-                        EmptyView()
-                    }
-                }
-            }
-
-            Text(entry.content)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(5)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(16)
-        .cardStyle()
-    }
-}
-
-private struct StatCard: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value)
-                .font(.title2.weight(.bold))
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Color(hex: 0xF3F4F6))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-}
-
-private enum BottomTab: CaseIterable, Identifiable {
-    case diary
-    case calendar
-    case profile
-
-    var id: String { title }
-
-    var title: String {
-        switch self {
-        case .diary: return "日记"
-        case .calendar: return "日历"
-        case .profile: return "用户"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .diary: return "book"
-        case .calendar: return "calendar"
-        case .profile: return "person"
-        }
-    }
-}
-
-private enum DiaryTab: CaseIterable, Identifiable {
-    case timeline
-    case onThisDay
-
-    var id: String { title }
-
-    var title: String {
-        switch self {
-        case .timeline: return "时间线"
-        case .onThisDay: return "那年今日"
-        }
-    }
-}
-
-private enum OnThisDayMode: CaseIterable, Identifiable {
-    case lastYear
-    case recentFiveYears
-
-    var id: String { title }
-
-    var title: String {
-        switch self {
-        case .lastYear: return "去年今日"
-        case .recentFiveYears: return "近五年"
-        }
-    }
-}
-
-private extension DiaryEntry {
-    func extractImageURLs() -> [URL] {
-        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
-            return []
-        }
-        let range = NSRange(content.startIndex..<content.endIndex, in: content)
-        return detector.matches(in: content, options: [], range: range)
-            .compactMap { $0.url }
-            .filter {
-                ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"].contains($0.pathExtension.lowercased())
-            }
-    }
-}
-
-private extension View {
-    func cardStyle() -> some View {
-        self
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(.white)
-            )
-            .shadow(color: .black.opacity(0.06), radius: 12, y: 6)
-    }
-}
-
-private extension Color {
-    init(hex: UInt) {
-        let red = Double((hex >> 16) & 0xFF) / 255.0
-        let green = Double((hex >> 8) & 0xFF) / 255.0
-        let blue = Double(hex & 0xFF) / 255.0
-        self.init(red: red, green: green, blue: blue)
     }
 }
 
@@ -886,5 +294,657 @@ struct LocalFileDocument: FileDocument {
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         let data = try Data(contentsOf: fileURL)
         return FileWrapper(regularFileWithContents: data)
+    }
+}
+
+
+struct DiaryTopHeader: View {
+    let title: String
+    let onMenu: () -> Void
+    let onSearch: () -> Void
+    let onSettings: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            chromeIconButton(systemName: "square.grid.2x2") {
+                onMenu()
+            }
+
+            Spacer(minLength: 8)
+
+            Text(title)
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 8) {
+                chromeIconButton(systemName: "magnifyingglass", action: onSearch)
+                chromeIconButton(systemName: "gearshape", action: onSettings)
+            }
+        }
+    }
+
+    private func chromeIconButton(systemName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 36, height: 36)
+                .background(.white)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct DiarySecondaryTabs: View {
+    @Binding var selected: DiaryTab
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 10) {
+                ForEach(DiaryTab.allCases) { tab in
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                            selected = tab
+                        }
+                    } label: {
+                        Text(tab.title)
+                            .font(.system(size: 15, weight: selected == tab ? .bold : .semibold))
+                            .foregroundStyle(selected == tab ? .white : .secondary)
+                            .padding(.horizontal, 14)
+                            .frame(height: 34)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(selected == tab ? Color.black : Color.clear)
+                            )
+                            .overlay(
+                                Capsule(style: .continuous)
+                                    .stroke(Color.black.opacity(selected == tab ? 0 : 0.07), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .scaleEffect(selected == tab ? 1 : 0.98)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct DiaryBottomNav: View {
+    @Binding var selected: BottomTab
+    let onAdd: () -> Void
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 12) {
+            HStack(spacing: 2) {
+                ForEach(BottomTab.allCases) { tab in
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.84)) {
+                            selected = tab
+                        }
+                    } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 16, weight: .bold))
+                            Text(tab.title)
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundStyle(selected == tab ? .primary : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background {
+                            if selected == tab {
+                                Capsule(style: .continuous)
+                                    .fill(.white)
+                                    .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
+                                    .padding(.vertical, 1)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 6)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color(hex: 0xEAECF0).opacity(0.96))
+                    .overlay(Capsule().stroke(Color.black.opacity(0.05), lineWidth: 1))
+            )
+
+            Button(action: onAdd) {
+                Image(systemName: "plus")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 56, height: 56)
+                    .background(Color.black)
+                    .clipShape(Circle())
+                    .shadow(color: .black.opacity(0.22), radius: 14, y: 8)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("新建日记")
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 10)
+    }
+}
+
+struct DiaryTimelineCard: View {
+    let entry: DiaryEntry
+    let onDelete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entry.entryDate, format: .dateTime.day())
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                    Text(entry.entryDate.formatted(.dateTime.year().month()))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(entry.entryDate.formatted(.dateTime.weekday(.wide)))
+                    .font(.title3.weight(.bold))
+                    .padding(.leading, 4)
+
+                Spacer()
+
+                Menu {
+                    Button(role: .destructive, action: onDelete) {
+                        Label("删除", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, height: 30)
+                        .background(Color(hex: 0xF3F4F6))
+                        .clipShape(Circle())
+                }
+            }
+
+            Text(entry.content)
+                .font(.body)
+                .lineSpacing(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let firstImage = entry.extractImageURLs().first {
+                AsyncImage(url: firstImage) { phase in
+                    switch phase {
+                    case .empty:
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(hex: 0xF3F4F6))
+                            .frame(height: 230)
+                            .overlay { ProgressView() }
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 230)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    case .failure:
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(hex: 0xF3F4F6))
+                            .frame(height: 230)
+                            .overlay { Image(systemName: "photo") }
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            }
+
+            HStack(spacing: 16) {
+                Label("贝尔维尤", systemImage: "location")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Image(systemName: "face.smiling")
+                Image(systemName: "heart")
+                Image(systemName: "bubble.right")
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+struct DiaryEmptyCard: View {
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "book.closed")
+                .font(.system(size: 28))
+                .foregroundStyle(.secondary)
+            Text("还没有日记")
+                .font(.headline)
+            Text("点右下角 + 开始记录今天。")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+        .cardStyle()
+    }
+}
+
+struct CalendarDateBrowserCard: View {
+    @Binding var selectedDate: Date
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("按日期浏览")
+                    .font(.headline)
+                Spacer()
+                Text(selectedDate.formatted(.dateTime.year().month().day()))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            DatePicker("", selection: $selectedDate, displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+struct CalendarDayContentCard: View {
+    let date: Date
+    let entries: [DiaryEntry]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("当日内容")
+                .font(.headline)
+
+            if entries.isEmpty {
+                Text("这一天没有记录")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(entries) { entry in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(entry.title.isEmpty ? "无标题" : entry.title)
+                            .font(.subheadline.weight(.semibold))
+
+                        Text(entry.content)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+
+                        if let image = entry.extractImageURLs().first {
+                            AsyncImage(url: image) { phase in
+                                switch phase {
+                                case .empty:
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color(hex: 0xF3F4F6))
+                                        .frame(height: 120)
+                                        .overlay { ProgressView() }
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(height: 120)
+                                        .frame(maxWidth: .infinity)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                case .failure:
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color(hex: 0xF3F4F6))
+                                        .frame(height: 120)
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .background(Color(hex: 0xF8F8F9))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+struct CalendarImageAggregationCard: View {
+    let groupedImages: [(String, [URL])]
+
+    private let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("图片聚合")
+                .font(.headline)
+
+            if groupedImages.isEmpty {
+                Text("暂无图片")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 6)
+            } else {
+                ForEach(groupedImages, id: \.0) { group in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(group.0)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        LazyVGrid(columns: columns, spacing: 8) {
+                            ForEach(group.1, id: \.absoluteString) { url in
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .empty:
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color(hex: 0xF2F3F5))
+                                    case .success(let image):
+                                        image
+                                            .resizable()
+                                            .scaledToFill()
+                                    case .failure:
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color(hex: 0xF2F3F5))
+                                            .overlay { Image(systemName: "photo") }
+                                    @unknown default:
+                                        EmptyView()
+                                    }
+                                }
+                                .aspectRatio(1, contentMode: .fit)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+struct OnThisDayDateNavigatorCard: View {
+    @Binding var selectedDate: Date
+
+    var body: some View {
+        HStack {
+            arrowButton(systemName: "chevron.left", offset: -1)
+
+            Spacer()
+
+            VStack(spacing: 2) {
+                Text(selectedDate.formatted(.dateTime.year().month(.wide).day()))
+                    .font(.headline)
+                Text("同一天回顾")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            arrowButton(systemName: "chevron.right", offset: 1)
+        }
+        .padding(16)
+        .cardStyle()
+    }
+
+    private func arrowButton(systemName: String, offset: Int) -> some View {
+        Button {
+            selectedDate = Calendar.current.date(byAdding: .day, value: offset, to: selectedDate) ?? selectedDate
+        } label: {
+            Image(systemName: systemName)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 32, height: 32)
+                .background(Color(hex: 0xF3F4F6))
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct OnThisDayFilterCard: View {
+    @Binding var mode: OnThisDayMode
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("筛选")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Picker("模式", selection: $mode) {
+                ForEach(OnThisDayMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+struct OnThisDayEntriesCard: View {
+    let title: String
+    let entries: [DiaryEntry]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline)
+
+            if entries.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "calendar.badge.exclamationmark")
+                    Text("这一天还没有记录")
+                        .font(.subheadline.weight(.semibold))
+                    Text("点右下角 + 写下今天，未来会在这里重逢。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(entries) { entry in
+                        OnThisDayEntryRow(entry: entry)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+struct OnThisDayEntryRow: View {
+    let entry: DiaryEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                Text(entry.title.isEmpty ? "无标题" : entry.title)
+                    .font(.headline)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Text(entry.entryDate.formatted(.dateTime.year().month().day()))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(entry.content)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(12)
+        .background(Color(hex: 0xF8F8F9))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+struct ProfileSummaryCard: View {
+    let entriesCount: Int
+    let imageCount: Int
+    let onExport: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(hex: 0xCDE6FB))
+                    .frame(width: 62, height: 62)
+                    .overlay { Image(systemName: "bird") }
+                Text("🐰")
+                    .font(.title3)
+                Spacer()
+                Button("获取PRO") {}
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.black, lineWidth: 2))
+            }
+
+            HStack(spacing: 10) {
+                StatBlock(title: "笔记", value: "\(entriesCount)")
+                StatBlock(title: "媒体", value: "\(imageCount)")
+                StatBlock(title: "字数", value: "\(entriesCount * 40)")
+                StatBlock(title: "位置", value: "1")
+            }
+
+            Button(action: onExport) {
+                Label("导出", systemImage: "square.and.arrow.up")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color(hex: 0xF3F4F6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+struct StatBlock: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.title3.weight(.bold))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+enum BottomTab: CaseIterable, Identifiable {
+    case diary
+    case calendar
+    case profile
+
+    var id: String { title }
+
+    var title: String {
+        switch self {
+        case .diary: return "日记"
+        case .calendar: return "日历"
+        case .profile: return "用户"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .diary: return "book"
+        case .calendar: return "calendar"
+        case .profile: return "person"
+        }
+    }
+}
+
+enum DiaryTab: CaseIterable, Identifiable {
+    case onThisDay
+    case timeline
+    case life
+    case books
+
+    var id: String { title }
+
+    var title: String {
+        switch self {
+        case .onThisDay: return "那年今日"
+        case .timeline: return "时间线"
+        case .life: return "人生线"
+        case .books: return "书籍线"
+        }
+    }
+}
+
+enum OnThisDayMode: CaseIterable, Identifiable {
+    case lastYear
+    case recentFiveYears
+
+    var id: String { title }
+
+    var title: String {
+        switch self {
+        case .lastYear: return "去年今日"
+        case .recentFiveYears: return "近五年"
+        }
+    }
+}
+
+extension DiaryEntry {
+    func extractImageURLs() -> [URL] {
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return []
+        }
+        let range = NSRange(content.startIndex..<content.endIndex, in: content)
+        return detector.matches(in: content, options: [], range: range)
+            .compactMap { $0.url }
+            .filter {
+                ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"].contains($0.pathExtension.lowercased())
+            }
+    }
+}
+
+extension View {
+    func cardStyle() -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(.white)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.black.opacity(0.04), lineWidth: 1)
+                    )
+            )
+            .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
+    }
+}
+
+extension Color {
+    init(hex: UInt) {
+        let red = Double((hex >> 16) & 0xFF) / 255.0
+        let green = Double((hex >> 8) & 0xFF) / 255.0
+        let blue = Double(hex & 0xFF) / 255.0
+        self.init(red: red, green: green, blue: blue)
     }
 }

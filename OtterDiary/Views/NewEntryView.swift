@@ -64,7 +64,7 @@ struct NewEntryView: View {
 
             Spacer()
 
-            Text("新增笔记")
+            Text("新建日记")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
 
             Spacer()
@@ -96,7 +96,7 @@ struct NewEntryView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("正文")
+                Text("内容")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
 
@@ -105,7 +105,7 @@ struct NewEntryView: View {
                         .scrollContentBackground(.hidden)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
-                        .frame(minHeight: 220)
+                        .frame(minHeight: 240)
                         .background(Color(hex: 0xF9FAFB))
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .overlay(
@@ -273,14 +273,5 @@ struct NewEntryView: View {
 
         tags.append(cleaned)
         newTagText = ""
-    }
-}
-
-private extension Color {
-    init(hex: UInt) {
-        let red = Double((hex >> 16) & 0xFF) / 255.0
-        let green = Double((hex >> 8) & 0xFF) / 255.0
-        let blue = Double(hex & 0xFF) / 255.0
-        self.init(red: red, green: green, blue: blue)
     }
 }
