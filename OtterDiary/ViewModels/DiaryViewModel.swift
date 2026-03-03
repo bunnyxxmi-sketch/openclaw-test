@@ -18,7 +18,8 @@ final class DiaryViewModel: ObservableObject {
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 180_000_000)
-            self.entries = store.load().sorted { $0.entryDate > $1.entryDate }
+            let loaded = store.load().sorted { $0.entryDate > $1.entryDate }
+            self.entries = self.migrateTagsIfNeeded(in: loaded)
             self.iCloudSyncState = store.syncState()
             self.isLoading = false
         }
@@ -36,7 +37,7 @@ final class DiaryViewModel: ObservableObject {
             emoji: emoji,
             location: location?.trimmingCharacters(in: .whitespacesAndNewlines),
             weather: weather?.trimmingCharacters(in: .whitespacesAndNewlines),
-            tags: tags,
+            tags: normalizedTags(inputTags: tags, content: trimmed),
             imageAssetPaths: imageAssetPaths
         )
         entries.insert(entry, at: 0)
@@ -62,7 +63,7 @@ final class DiaryViewModel: ObservableObject {
         entries[i].emoji = emoji
         entries[i].location = location?.trimmingCharacters(in: .whitespacesAndNewlines)
         entries[i].weather = weather?.trimmingCharacters(in: .whitespacesAndNewlines)
-        entries[i].tags = tags
+        entries[i].tags = normalizedTags(inputTags: tags, content: trimmed)
         entries[i].imageAssetPaths = imageAssetPaths
         entries[i].updatedAt = .now
         persist()
@@ -80,7 +81,8 @@ final class DiaryViewModel: ObservableObject {
         let state = store.setICloudEnabled(enabled)
         isICloudSyncEnabled = enabled
         iCloudSyncState = state
-        entries = store.load().sorted { $0.entryDate > $1.entryDate }
+        let loaded = store.load().sorted { $0.entryDate > $1.entryDate }
+        entries = migrateTagsIfNeeded(in: loaded)
         if case .failed(let reason) = state {
             latestSyncMessage = reason
         }
@@ -129,6 +131,42 @@ final class DiaryViewModel: ObservableObject {
         return urls
     }
 
+
+
+
+    private func migrateTagsIfNeeded(in loaded: [DiaryEntry]) -> [DiaryEntry] {
+        var didChange = false
+        let migrated = loaded.map { original -> DiaryEntry in
+            var entry = original
+            let merged = normalizedTags(inputTags: entry.tags, content: entry.content)
+            if merged != entry.tags {
+                entry.tags = merged
+                entry.updatedAt = .now
+                didChange = true
+            }
+            return entry
+        }
+        if didChange {
+            _ = store.save(migrated)
+        }
+        return migrated
+    }
+
+    private func normalizedTags(inputTags: [String], content: String) -> [String] {
+        DiaryEntry.normalizedTags(inputTags + extractHashTags(from: content))
+    }
+
+    private func extractHashTags(from text: String) -> [String] {
+        let pattern = "#([\\p{L}\\p{N}_-]+)"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return []
+        }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.matches(in: text, options: [], range: range).compactMap { match in
+            guard match.numberOfRanges > 1, let tagRange = Range(match.range(at: 1), in: text) else { return nil }
+            return String(text[tagRange])
+        }
+    }
 
     private func localImageURL(for relativePath: String) -> URL {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory

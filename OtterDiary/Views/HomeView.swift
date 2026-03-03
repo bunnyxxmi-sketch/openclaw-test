@@ -413,21 +413,18 @@ struct DiaryEntryDetailView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                if !entry.displayTags.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("标签")
-                            .font(.caption.weight(.semibold))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("标签")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    if entry.displayTags.isEmpty {
+                        Text("无标签")
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
+                    } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 8)], alignment: .leading, spacing: 8) {
                             ForEach(entry.displayTags, id: \.self) { tag in
-                                Text("#\(tag)")
-                                    .font(.footnote.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 7)
-                                    .background(DiaryColor.controlBackground)
-                                    .clipShape(Capsule())
-                                    .overlay(Capsule().stroke(DiaryColor.strokeStrong, lineWidth: 1))
+                                tagChip(tag)
                             }
                         }
                     }
@@ -473,6 +470,17 @@ struct DiaryEntryDetailView: View {
         .navigationTitle("阅读")
         .navigationBarTitleDisplayMode(.inline)
         .background(DiaryColor.pageBackground)
+    }
+
+    private func tagChip(_ tag: String) -> some View {
+        Text("#\(tag)")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(DiaryColor.controlBackground)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(DiaryColor.strokeStrong, lineWidth: 1))
     }
 }
 
@@ -636,6 +644,17 @@ struct DiaryTimelineCard: View {
                 }
             }
 
+            if !entry.displayTags.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(entry.displayTags, id: \.self) { tag in
+                            tagChip(tag)
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
+            }
+
             HStack(alignment: .center, spacing: 8) {
                 Text(entry.locationWeatherText)
                     .font(.caption.weight(.medium))
@@ -678,6 +697,17 @@ struct DiaryTimelineCard: View {
         .background(DiaryColor.controlBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DiaryColor.stroke, lineWidth: 1))
+    }
+
+    private func tagChip(_ tag: String) -> some View {
+        Text("#\(tag)")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(DiaryColor.controlBackground)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(DiaryColor.strokeStrong, lineWidth: 1))
     }
 
     private var menuButton: some View {
@@ -1010,7 +1040,7 @@ struct EditEntryView: View {
         _content = State(initialValue: entry.content)
         _date = State(initialValue: entry.entryDate)
         _emoji = State(initialValue: entry.emoji)
-        _tags = State(initialValue: entry.tags)
+        _tags = State(initialValue: entry.displayTags)
         _location = State(initialValue: entry.location ?? "")
         _weather = State(initialValue: entry.weather ?? "")
         _imageAssetPaths = State(initialValue: entry.imageAssetPaths)
@@ -1506,32 +1536,19 @@ extension DiaryEntry {
 
 
     var displayTags: [String] {
-        var seen = Set<String>()
-        let merged = tags + extractTags()
-        return merged.compactMap { raw in
-            let cleaned = normalizeTag(raw)
-            guard !cleaned.isEmpty else { return nil }
-            let key = cleaned.lowercased()
-            guard !seen.contains(key) else { return nil }
-            seen.insert(key)
-            return cleaned
-        }
+        DiaryEntry.normalizedTags(tags + extractTags())
     }
 
     func extractTags() -> [String] {
-        content.split(whereSeparator: { $0.isWhitespace || $0.isNewline })
-            .map(String.init)
-            .filter { $0.hasPrefix("#") && $0.count > 1 }
-            .map { String($0.dropFirst()) }
-            .map(normalizeTag)
-            .filter { !$0.isEmpty }
-    }
-
-    private func normalizeTag(_ raw: String) -> String {
-        raw
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "#", with: "")
-            .trimmingCharacters(in: .punctuationCharacters)
+        let pattern = "#([\\p{L}\\p{N}_-]+)"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return []
+        }
+        let range = NSRange(content.startIndex..<content.endIndex, in: content)
+        return regex.matches(in: content, options: [], range: range).compactMap { match in
+            guard match.numberOfRanges > 1, let tagRange = Range(match.range(at: 1), in: content) else { return nil }
+            return String(content[tagRange])
+        }
     }
 }
 

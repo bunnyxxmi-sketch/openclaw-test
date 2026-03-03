@@ -56,14 +56,19 @@ struct DiaryEntry: Identifiable, Codable, Hashable {
     }
 }
 
-
 extension DiaryEntry {
     enum CodingKeys: String, CodingKey {
         case id, createdAt, updatedAt, entryDate, title, content, mood, emoji, location, weather, tags, imageAssetPaths, isDeleted
     }
 
+    private enum LegacyCodingKeys: String, CodingKey {
+        case tag
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        let legacy = try? decoder.container(keyedBy: LegacyCodingKeys.self)
+
         id = try c.decode(UUID.self, forKey: .id)
         createdAt = try c.decode(Date.self, forKey: .createdAt)
         updatedAt = try c.decode(Date.self, forKey: .updatedAt)
@@ -74,8 +79,31 @@ extension DiaryEntry {
         emoji = try c.decodeIfPresent(String.self, forKey: .emoji)
         location = try c.decodeIfPresent(String.self, forKey: .location)
         weather = try c.decodeIfPresent(String.self, forKey: .weather)
-        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
+
+        let decodedTags = (try? c.decodeIfPresent([String].self, forKey: .tags)) ?? []
+        let legacyTags = (try? legacy?.decodeIfPresent([String].self, forKey: .tag)) ?? []
+        tags = Self.normalizedTags(decodedTags + legacyTags)
+
         imageAssetPaths = try c.decodeIfPresent([String].self, forKey: .imageAssetPaths) ?? []
         isDeleted = try c.decodeIfPresent(Bool.self, forKey: .isDeleted) ?? false
+    }
+
+    static func normalizedTags(_ rawTags: [String]) -> [String] {
+        var seen = Set<String>()
+        return rawTags.compactMap { raw in
+            let cleaned = normalizeTag(raw)
+            guard !cleaned.isEmpty else { return nil }
+            let key = cleaned.lowercased()
+            guard !seen.contains(key) else { return nil }
+            seen.insert(key)
+            return cleaned
+        }
+    }
+
+    static func normalizeTag(_ raw: String) -> String {
+        raw
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "#", with: "")
+            .trimmingCharacters(in: .punctuationCharacters)
     }
 }
