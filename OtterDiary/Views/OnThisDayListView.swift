@@ -9,8 +9,10 @@ struct OnThisDayListView: View {
                 ForEach(entries) { entry in
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text(entry.title.isEmpty ? "无标题" : entry.title)
-                                .font(.headline)
+                            if let title = entry.displayTitle {
+                                Text(title)
+                                    .font(.headline)
+                            }
                             Spacer(minLength: 8)
                             Text(entry.entryDate.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption.weight(.semibold))
@@ -34,5 +36,6 @@ struct OnThisDayListView: View {
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle(entries.count > 1 ? "近五年" : "去年今日")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

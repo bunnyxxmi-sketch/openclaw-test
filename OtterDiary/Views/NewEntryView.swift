@@ -112,7 +112,7 @@ struct NewEntryView: View {
             .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
 
             Spacer()
-            Text("新建日记").font(.title2.weight(.heavy))
+            Text("新建日记").font(.title3.weight(.heavy))
             Spacer()
             Color.clear.frame(width: 44, height: 44)
         }

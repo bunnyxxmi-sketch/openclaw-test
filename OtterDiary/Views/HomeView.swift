@@ -276,7 +276,7 @@ struct HomeView: View {
                 ProfileCard()
                 StatsCard(entriesCount: viewModel.visibleEntries.count, imageCount: viewModel.allImageURLs.count, entries: viewModel.visibleEntries)
                 DualCalendarCard(entries: viewModel.visibleEntries, monthAnchor: $profileMonthAnchor)
-                ActionGridCard(onExport: { doExport(.json) }, onSettings: { showingSettings = true })
+                ActionGridCard(onSettings: { showingSettings = true })
             }
             .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
             .padding(.bottom, DiaryStyle.Spacing.bottomSafe)
@@ -357,6 +357,7 @@ struct SettingsView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("设置")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } } }
     }
 }
@@ -378,8 +379,10 @@ struct DiaryEntryDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text(entry.title.isEmpty ? "无标题" : entry.title)
-                    .font(.title.weight(.bold))
+                if let title = entry.displayTitle {
+                    Text(title)
+                        .font(.title2.weight(.bold))
+                }
                 Text(entry.entryDate.formatted(.dateTime.year().month(.wide).day().weekday(.wide).hour().minute()))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -423,7 +426,7 @@ struct DiaryTopHeader: View {
     var body: some View {
         ZStack {
             Text(title)
-                .font(.largeTitle.weight(.heavy))
+                .font(.title.weight(.heavy))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
@@ -546,7 +549,9 @@ struct DiaryTimelineCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(entry.title.isEmpty ? "无标题" : entry.title).font(.title3.weight(.bold)).lineLimit(2)
+                    if let title = entry.displayTitle {
+                        Text(title).font(.title3.weight(.bold)).lineLimit(2)
+                    }
                     Text(entry.entryDate.formatted(.dateTime.month(.wide).day().weekday(.wide)))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
@@ -571,9 +576,18 @@ struct DiaryTimelineCard: View {
                 }
             }
 
-            HStack(spacing: 6) {
-                if let emoji = entry.emoji, !emoji.isEmpty { Text(emoji) }
-                Text(entry.content).font(.subheadline).lineSpacing(2).lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
+            Text(entry.content).font(.subheadline).lineSpacing(2).lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack {
+                Spacer()
+                if let emoji = entry.reactionEmoji {
+                    Text(emoji)
+                        .font(.subheadline)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(DiaryColor.controlBackground))
+                        .overlay(Capsule().stroke(DiaryColor.strokeStrong, lineWidth: 1))
+                }
             }
 
             if let firstImage = entry.primaryDisplayImageURL {
@@ -838,7 +852,9 @@ struct OnThisDayEntryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(entry.title.isEmpty ? "无标题" : entry.title).font(.headline).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+if let title = entry.displayTitle {
+                    Text(title).font(.headline).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                }
                 Text(entry.entryDate.formatted(.dateTime.year().month().day())).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             }
             Text(entry.content).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
@@ -872,7 +888,11 @@ struct LifeYearSection: View {
                 HStack(alignment: .top) {
                     Circle().fill(DiaryColor.tintStrong).frame(width: 8, height: 8).padding(.top, 5)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(entry.title.isEmpty ? "无标题" : entry.title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                        if let title = entry.displayTitle {
+                            Text(title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                        } else {
+                            Text(entry.content).font(.subheadline.weight(.semibold)).lineLimit(1)
+                        }
                         Text(entry.entryDate.formatted(.dateTime.month().day())).font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -947,6 +967,7 @@ struct EditEntryView: View {
             }
         }
         .navigationTitle("编辑记录")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("保存") {
@@ -1019,11 +1040,11 @@ struct StatBlock: View {
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(spacing: 2) {
             Text(title).font(.caption).foregroundStyle(.secondary)
             Text(value).font(.title3.weight(.bold)).lineLimit(1).minimumScaleFactor(0.8)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -1173,12 +1194,10 @@ private func monthDays(for monthAnchor: Date) -> [Date?] {
 }
 
 struct ActionGridCard: View {
-    let onExport: () -> Void
     let onSettings: () -> Void
 
     var body: some View {
         VStack(spacing: 10) {
-            actionButton(title: "导出", icon: "square.and.arrow.up", action: onExport)
             actionButton(title: "设置", icon: "gearshape", action: onSettings)
         }
         .padding(16)
@@ -1245,9 +1264,11 @@ struct SearchEntriesView: View {
             } else {
                 ForEach(filteredEntries) { entry in
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(entry.title.isEmpty ? "无标题" : entry.title)
-                            .font(.headline)
-                            .lineLimit(1)
+if let title = entry.displayTitle {
+                            Text(title)
+                                .font(.headline)
+                                .lineLimit(1)
+                        }
                         Text(entry.content)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -1262,6 +1283,7 @@ struct SearchEntriesView: View {
         }
         .searchable(text: $keyword, placement: .navigationBarDrawer(displayMode: .always), prompt: "搜索标题或正文")
         .navigationTitle("搜索")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("关闭") { dismiss() } } }
     }
 }
@@ -1314,6 +1336,18 @@ enum OnThisDayMode: CaseIterable, Identifiable {
 }
 
 extension DiaryEntry {
+    var displayTitle: String? {
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty ? nil : title
+    }
+
+    var reactionEmoji: String? {
+        guard let emoji else { return nil }
+        let trimmed = emoji.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+
     func extractImageURLs() -> [URL] {
         guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return imageAssetPaths.map { diaryLocalImageURL(for: $0) } }
         let range = NSRange(content.startIndex..<content.endIndex, in: content)
