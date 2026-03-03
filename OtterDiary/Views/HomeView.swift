@@ -5,9 +5,10 @@ struct HomeView: View {
     @ObservedObject var viewModel: DiaryViewModel
 
     @State private var selectedBottomTab: BottomTab = .diary
-    @State private var selectedDiaryTab: DiaryTab = .onThisDay
+    @State private var selectedDiaryTab: DiaryTab = .timeline
     @State private var onThisDayMode: OnThisDayMode = .lastYear
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
+    @State private var selectedCalendarDate: Date = Calendar.current.startOfDay(for: .now)
 
     @State private var showingNewEntry = false
     @State private var showingSettings = false
@@ -70,7 +71,7 @@ struct HomeView: View {
 
             Spacer(minLength: 8)
 
-            Text("海獭日记")
+            Text(headerTitle)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
 
             Spacer(minLength: 8)
@@ -86,13 +87,21 @@ struct HomeView: View {
         }
     }
 
+    private var headerTitle: String {
+        switch selectedBottomTab {
+        case .diary: return "日记"
+        case .calendar: return "日历"
+        case .profile: return "用户"
+        }
+    }
+
     private var contentArea: some View {
         Group {
             switch selectedBottomTab {
             case .diary:
                 diaryHome
-            case .library:
-                libraryPage
+            case .calendar:
+                calendarPage
             case .profile:
                 profilePage
             }
@@ -106,14 +115,10 @@ struct HomeView: View {
 
             Group {
                 switch selectedDiaryTab {
-                case .onThisDay:
-                    onThisDayPage
                 case .timeline:
                     timelinePage
-                case .lifeLine:
-                    comingSoonCard("人生线")
-                case .bookLine:
-                    comingSoonCard("书籍线")
+                case .onThisDay:
+                    onThisDayPage
                 }
             }
             .padding(.horizontal, 20)
@@ -314,30 +319,53 @@ struct HomeView: View {
         .cardStyle()
     }
 
-    private var libraryPage: some View {
+    private var calendarPage: some View {
         ScrollView {
             VStack(spacing: 12) {
-                GalleryView(imageURLs: viewModel.allImageURLs)
+                CalendarDateCard(selectedDate: $selectedCalendarDate)
 
-                Button {
-                    showingSettings = true
-                } label: {
-                    HStack {
-                        Label("导出与设置", systemImage: "gearshape")
-                            .font(.headline)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(16)
-                    .cardStyle()
-                }
-                .buttonStyle(.plain)
+                CalendarDayEntriesCard(
+                    date: selectedCalendarDate,
+                    entries: entries(on: selectedCalendarDate)
+                )
+
+                CalendarAllImagesSection(groupedImages: groupedImagesByMonth)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 110)
         }
         .scrollIndicators(.hidden)
+    }
+
+    private func entries(on date: Date) -> [DiaryEntry] {
+        let cal = Calendar.current
+        return viewModel.visibleEntries.filter { cal.isDate($0.entryDate, inSameDayAs: date) }
+    }
+
+    private var groupedImagesByMonth: [(String, [URL])] {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年M月"
+
+        var bucket: [String: [URL]] = [:]
+        var order: [String] = []
+
+        for entry in viewModel.visibleEntries {
+            let images = entry.extractImageURLs()
+            guard !images.isEmpty else { continue }
+
+            let key = formatter.string(from: entry.entryDate)
+            if bucket[key] == nil {
+                bucket[key] = []
+                order.append(key)
+            }
+            bucket[key]?.append(contentsOf: images)
+        }
+
+        return order.map { key in
+            let unique = Array(Set(bucket[key] ?? [])).sorted { $0.absoluteString < $1.absoluteString }
+            return (key, unique)
+        }
     }
 
     private var profilePage: some View {
@@ -372,24 +400,6 @@ struct HomeView: View {
             .padding(.bottom, 110)
         }
         .scrollIndicators(.hidden)
-    }
-
-    private func comingSoonCard(_ title: String) -> some View {
-        VStack(spacing: 10) {
-            Spacer(minLength: 60)
-            Image(systemName: "sparkles")
-                .font(.system(size: 28))
-                .foregroundStyle(.secondary)
-            Text("\(title) Coming Soon")
-                .font(.headline)
-            Text("这个分区正在设计中，先在时间线里记录生活。")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Spacer(minLength: 80)
-        }
-        .frame(maxWidth: .infinity)
-        .cardStyle()
     }
 
     private var bottomOverlay: some View {
@@ -469,6 +479,151 @@ struct HomeView: View {
     }
 }
 
+private struct CalendarDateCard: View {
+    @Binding var selectedDate: Date
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("按日期浏览")
+                    .font(.headline)
+                Spacer()
+                Text(selectedDate.formatted(.dateTime.year().month().day()))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            DatePicker("", selection: $selectedDate, displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+private struct CalendarDayEntriesCard: View {
+    let date: Date
+    let entries: [DiaryEntry]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("当日记录")
+                .font(.headline)
+
+            if entries.isEmpty {
+                Text("这一天没有记录")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 6)
+            } else {
+                ForEach(entries) { entry in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(entry.title.isEmpty ? "无标题" : entry.title)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+
+                        if let image = entry.extractImageURLs().first {
+                            AsyncImage(url: image) { phase in
+                                switch phase {
+                                case .empty:
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(hex: 0xF3F4F6))
+                                        .frame(height: 140)
+                                        .overlay { ProgressView() }
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(height: 140)
+                                        .frame(maxWidth: .infinity)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                case .failure:
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(hex: 0xF3F4F6))
+                                        .frame(height: 140)
+                                        .overlay { Image(systemName: "photo") }
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                        }
+
+                        Text(entry.content)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    .padding(12)
+                    .background(Color(hex: 0xF7F8FA))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+private struct CalendarAllImagesSection: View {
+    let groupedImages: [(String, [URL])]
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10)
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("所有图片")
+                .font(.headline)
+
+            if groupedImages.isEmpty {
+                Text("暂无图片")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 6)
+            } else {
+                ForEach(groupedImages, id: \.0) { group in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(group.0)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        LazyVGrid(columns: columns, spacing: 10) {
+                            ForEach(group.1, id: \.absoluteString) { url in
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .empty:
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(.gray.opacity(0.12))
+                                            .overlay { ProgressView() }
+                                    case .success(let image):
+                                        image
+                                            .resizable()
+                                            .scaledToFill()
+                                    case .failure:
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(.gray.opacity(0.12))
+                                            .overlay { Image(systemName: "photo") }
+                                    @unknown default:
+                                        EmptyView()
+                                    }
+                                }
+                                .aspectRatio(1, contentMode: .fit)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
 private struct OnThisDayEntryRow: View {
     let entry: DiaryEntry
 
@@ -502,13 +657,7 @@ private struct TimelineEntryCard: View {
     let onDelete: () -> Void
 
     var firstImageURL: URL? {
-        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
-        let range = NSRange(entry.content.startIndex..<entry.content.endIndex, in: entry.content)
-        let links = detector?.matches(in: entry.content, options: [], range: range)
-            .compactMap { $0.url } ?? []
-        return links.first {
-            ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"].contains($0.pathExtension.lowercased())
-        }
+        entry.extractImageURLs().first
     }
 
     var body: some View {
@@ -578,69 +727,6 @@ private struct TimelineEntryCard: View {
     }
 }
 
-struct GalleryView: View {
-    let imageURLs: [URL]
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("图书馆")
-                .font(.headline)
-
-            if imageURLs.isEmpty {
-                VStack(spacing: 10) {
-                    Image(systemName: "photo.stack")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.secondary)
-                    Text("还没有图片回忆")
-                        .font(.subheadline.weight(.semibold))
-                    Text("在日记正文里粘贴图片链接，这里会自动汇总。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 26)
-            } else {
-                LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(imageURLs, id: \.absoluteString) { url in
-                        AsyncImage(url: url) { phase in
-                            switch phase {
-                            case .empty:
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(.gray.opacity(0.12))
-                                    .overlay { ProgressView() }
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                            case .failure:
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(.gray.opacity(0.12))
-                                    .overlay {
-                                        Image(systemName: "exclamationmark.triangle")
-                                            .foregroundStyle(.secondary)
-                                    }
-                            @unknown default:
-                                EmptyView()
-                            }
-                        }
-                        .aspectRatio(1, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .cardStyle()
-    }
-}
-
 private struct StatCard: View {
     let title: String
     let value: String
@@ -662,7 +748,7 @@ private struct StatCard: View {
 
 private enum BottomTab: CaseIterable, Identifiable {
     case diary
-    case library
+    case calendar
     case profile
 
     var id: String { title }
@@ -670,7 +756,7 @@ private enum BottomTab: CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .diary: return "日记"
-        case .library: return "图书馆"
+        case .calendar: return "日历"
         case .profile: return "用户"
         }
     }
@@ -678,26 +764,22 @@ private enum BottomTab: CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .diary: return "book"
-        case .library: return "photo.stack"
+        case .calendar: return "calendar"
         case .profile: return "person"
         }
     }
 }
 
 private enum DiaryTab: CaseIterable, Identifiable {
-    case onThisDay
     case timeline
-    case lifeLine
-    case bookLine
+    case onThisDay
 
     var id: String { title }
 
     var title: String {
         switch self {
-        case .onThisDay: return "那年今日"
         case .timeline: return "时间线"
-        case .lifeLine: return "人生线"
-        case .bookLine: return "书籍线"
+        case .onThisDay: return "那年今日"
         }
     }
 }
@@ -713,6 +795,20 @@ private enum OnThisDayMode: CaseIterable, Identifiable {
         case .lastYear: return "去年今日"
         case .recentFiveYears: return "近五年"
         }
+    }
+}
+
+private extension DiaryEntry {
+    func extractImageURLs() -> [URL] {
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return []
+        }
+        let range = NSRange(content.startIndex..<content.endIndex, in: content)
+        return detector.matches(in: content, options: [], range: range)
+            .compactMap { $0.url }
+            .filter {
+                ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"].contains($0.pathExtension.lowercased())
+            }
     }
 }
 
