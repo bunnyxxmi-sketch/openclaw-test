@@ -45,6 +45,19 @@ final class DiaryViewModel: ObservableObject {
         persist()
     }
 
+    func updateEntry(id: UUID, title: String, content: String, date: Date, mood: Mood?) {
+        guard let i = entries.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        entries[i].title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        entries[i].content = trimmed
+        entries[i].entryDate = date
+        entries[i].mood = mood
+        entries[i].updatedAt = .now
+        persist()
+    }
+
     func persist() {
         let state = store.save(entries)
         iCloudSyncState = state

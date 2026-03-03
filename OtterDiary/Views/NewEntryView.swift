@@ -55,10 +55,10 @@ struct NewEntryView: View {
                 .frame(minHeight: 74)
                 .background(.ultraThinMaterial)
         }
-        .alert("功能开发中", isPresented: $showPlaceholderHint) {
+        .alert("My logs", isPresented: $showPlaceholderHint) {
             Button("知道了", role: .cancel) {}
         } message: {
-            Text("图片/语音/表情入口已预留，后续会接入完整能力。")
+            Text("可直接在正文粘贴图片链接，保存后会出现在日历缩略图中。")
         }
         .confirmationDialog("保存草稿？", isPresented: $showDraftDialog, titleVisibility: .visible) {
             Button("保存草稿") {

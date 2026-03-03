@@ -9,6 +9,8 @@ struct HomeView: View {
     @State private var onThisDayMode: OnThisDayMode = .lastYear
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
     @State private var selectedCalendarDate: Date = Calendar.current.startOfDay(for: .now)
+    @State private var calendarMonthAnchor: Date = Calendar.current.startOfDay(for: .now)
+    @State private var editingEntry: DiaryEntry?
 
     @State private var showingNewEntry = false
     @State private var showingSettings = false
@@ -17,6 +19,7 @@ struct HomeView: View {
     @State private var exportFormat: ExportFormat = .json
     @State private var feedback: StandardFeedback?
     @State private var showingSearchHint = false
+    @State private var selectedBookTag: String? = nil
 
     @State private var timelineTopToken = UUID()
     @State private var fabVisible = true
@@ -55,6 +58,15 @@ struct HomeView: View {
                     selectedBottomTab = .diary
                     selectedDiaryTab = .timeline
                     timelineTopToken = UUID()
+                }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $editingEntry) { entry in
+            NavigationStack {
+                EditEntryView(entry: entry) { title, content, date, mood in
+                    viewModel.updateEntry(id: entry.id, title: title, content: content, date: date, mood: mood)
                 }
             }
             .presentationDetents([.large])
@@ -100,8 +112,10 @@ struct HomeView: View {
         } message: {
             Text(feedback?.message ?? "")
         }
-        .alert("搜索功能即将上线", isPresented: $showingSearchHint) {
+        .alert("My logs", isPresented: $showingSearchHint) {
             Button("好的", role: .cancel) {}
+        } message: {
+            Text("可在内容中使用 #标签（例如 #书籍）快速整理，再到「书籍线」筛选查看。")
         }
         .onChange(of: viewModel.latestSyncMessage) { _, msg in
             guard let msg else { return }
@@ -114,11 +128,7 @@ struct HomeView: View {
     }
 
     private var headerTitle: String {
-        switch selectedBottomTab {
-        case .diary: return "海獭日记"
-        case .calendar: return "日历"
-        case .profile: return "用户"
-        }
+        "My logs"
     }
 
     @ViewBuilder
@@ -153,8 +163,10 @@ struct HomeView: View {
                             timelineSection
                         } else if selectedDiaryTab == .onThisDay {
                             onThisDayContent
+                        } else if selectedDiaryTab == .life {
+                            lifeLineContent
                         } else {
-                            comingSoonCard
+                            booksLineContent
                         }
                     }
                     .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
@@ -181,9 +193,11 @@ struct HomeView: View {
         } else {
             ForEach(viewModel.visibleEntries) { entry in
                 NavigationLink(value: entry) {
-                    DiaryTimelineCard(entry: entry) {
-                        viewModel.deleteEntry(id: entry.id)
-                    }
+                    DiaryTimelineCard(
+                        entry: entry,
+                        onEdit: { editingEntry = entry },
+                        onDelete: { viewModel.deleteEntry(id: entry.id) }
+                    )
                 }
                 .buttonStyle(.plain)
             }
@@ -207,35 +221,119 @@ struct HomeView: View {
         }
     }
 
-    private var comingSoonCard: some View {
-        VStack(spacing: DiaryStyle.Spacing.sectionGap) {
-            Image(systemName: "clock.badge")
-                .font(.system(size: 22))
-                .foregroundStyle(.secondary)
-            Text("正在构建中").font(.headline)
-            Text("先使用「时间线」和「那年今日」。")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+    private var lifeLineContent: some View {
+        let grouped = Dictionary(grouping: viewModel.visibleEntries) { Calendar.current.component(.year, from: $0.entryDate) }
+        let years = grouped.keys.sorted(by: >)
+
+        return VStack(spacing: DiaryStyle.Spacing.sectionGap) {
+            if years.isEmpty {
+                DiaryEmptyCard()
+            } else {
+                ForEach(years, id: \.self) { year in
+                    let items = (grouped[year] ?? []).sorted { $0.entryDate > $1.entryDate }
+                    LifeYearSection(year: year, entries: items)
+                }
+            }
         }
-        .padding(.vertical, 28)
-        .frame(maxWidth: .infinity)
-        .cardStyle()
+    }
+
+    private var booksLineContent: some View {
+        let bookEntries = viewModel.visibleEntries.filter { entry in
+            let text = "\(entry.title) \(entry.content)".lowercased()
+            let keywords = ["书", "阅读", "读完", "book", "kindle", "novel", "小说"]
+            let hasKeyword = keywords.contains { text.contains($0) }
+            let tags = entry.extractTags().map { $0.lowercased() }
+            let hasBookTag = tags.contains { ["书", "书籍", "阅读", "读书", "books", "book"].contains($0) }
+            return hasKeyword || hasBookTag
+        }
+
+        let allTags = Array(Set(bookEntries.flatMap { $0.extractTags() })).sorted()
+        let filteredEntries: [DiaryEntry] = {
+            guard let selectedBookTag, !selectedBookTag.isEmpty else { return bookEntries }
+            return bookEntries.filter { $0.extractTags().contains(selectedBookTag) }
+        }()
+
+        return VStack(alignment: .leading, spacing: DiaryStyle.Spacing.sectionGap) {
+            Text("书籍筛选")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    filterChip(title: "全部", selected: selectedBookTag == nil) { selectedBookTag = nil }
+                    ForEach(allTags, id: \.self) { tag in
+                        filterChip(title: "#\(tag)", selected: selectedBookTag == tag) { selectedBookTag = tag }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .scrollIndicators(.hidden)
+
+            if filteredEntries.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "books.vertical")
+                    Text("还没有书籍记录")
+                        .font(.headline)
+                    Text("在日记中写下阅读内容，或加上 #书籍 / #阅读 标签。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .cardStyle()
+            } else {
+                ForEach(filteredEntries) { entry in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(entry.title.isEmpty ? "无标题" : entry.title)
+                                .font(.headline)
+                                .lineLimit(2)
+                            Spacer()
+                            Text(entry.entryDate.formatted(.dateTime.year().month().day()))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(entry.content)
+                            .font(.subheadline)
+                            .lineLimit(3)
+                        if !entry.extractTags().isEmpty {
+                            Text(entry.extractTags().map { "#\($0)" }.joined(separator: "  "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(16)
+                    .cardStyle()
+                }
+            }
+        }
+    }
+
+    private func filterChip(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.footnote.weight(selected ? .bold : .semibold))
+                .foregroundStyle(selected ? DiaryColor.onTint : .secondary)
+                .padding(.horizontal, 12)
+                .frame(height: 32)
+                .background(Capsule().fill(selected ? DiaryColor.tintStrong : DiaryColor.controlBackground))
+        }
+        .buttonStyle(DiaryPressButtonStyle(cornerRadius: 16, pressedScale: 0.97))
     }
 
     private var calendarPage: some View {
         ScrollView {
-            VStack(spacing: DiaryStyle.Spacing.sectionGap) {
-                CalendarDateBrowserCard(selectedDate: $selectedCalendarDate)
-                CalendarDayContentCard(date: selectedCalendarDate, entries: entries(on: selectedCalendarDate))
-                    .id(selectedCalendarDate.formatted(.dateTime.year().month().day()))
-                    .transition(.opacity.combined(with: .move(edge: .trailing)))
-                CalendarImageAggregationCard(groupedImages: groupedImagesByMonth(for: selectedCalendarDate))
-                    .transition(.opacity)
+            CalendarMonthGridCard(
+                monthAnchor: $calendarMonthAnchor,
+                selectedDate: $selectedCalendarDate,
+                entries: viewModel.visibleEntries
+            ) { tappedDate in
+                selectedCalendarDate = tappedDate
             }
             .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
             .padding(.bottom, DiaryStyle.Spacing.bottomSafe)
             .padding(.top, DiaryStyle.Spacing.contentTop)
-            .animation(.easeInOut(duration: 0.25), value: selectedCalendarDate)
         }
         .scrollIndicators(.hidden)
         .scrollBounceBehavior(.basedOnSize)
@@ -260,34 +358,6 @@ struct HomeView: View {
         return viewModel.visibleEntries.filter { cal.isDate($0.entryDate, inSameDayAs: date) }
     }
 
-    private func groupedImagesByMonth(for date: Date) -> [(String, [URL])] {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = "yyyy年M月"
-
-        let monthEntries = viewModel.visibleEntries.filter {
-            Calendar.current.isDate($0.entryDate, equalTo: date, toGranularity: .month)
-        }
-
-        var bucket: [String: [URL]] = [:]
-        var order: [String] = []
-
-        for entry in monthEntries {
-            let images = entry.extractImageURLs()
-            guard !images.isEmpty else { continue }
-            let key = formatter.string(from: entry.entryDate)
-            if bucket[key] == nil {
-                bucket[key] = []
-                order.append(key)
-            }
-            bucket[key]?.append(contentsOf: images)
-        }
-
-        return order.map { key in
-            let unique = Array(Set(bucket[key] ?? [])).sorted { $0.absoluteString < $1.absoluteString }
-            return (key, unique)
-        }
-    }
 
     private func doExport(_ format: ExportFormat) {
         do {
@@ -517,6 +587,7 @@ struct DiaryBottomNav: View {
 
 struct DiaryTimelineCard: View {
     let entry: DiaryEntry
+    let onEdit: () -> Void
     let onDelete: () -> Void
     @State private var showingDeleteConfirm = false
 
@@ -533,6 +604,9 @@ struct DiaryTimelineCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Menu {
+                    Button(action: onEdit) {
+                        Label("编辑", systemImage: "square.and.pencil")
+                    }
                     Button(role: .destructive) { showingDeleteConfirm = true } label: {
                         Label("删除", systemImage: "trash")
                     }
@@ -600,87 +674,125 @@ struct DiaryEmptyCard: View {
     }
 }
 
-struct CalendarDateBrowserCard: View {
+struct CalendarMonthGridCard: View {
+    @Binding var monthAnchor: Date
     @Binding var selectedDate: Date
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("按日期浏览").font(.headline)
-                Spacer()
-                Text(selectedDate.formatted(.dateTime.year().month().day())).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            }
-            DatePicker("", selection: $selectedDate, displayedComponents: .date).datePickerStyle(.graphical).labelsHidden()
-        }
-        .padding(16)
-        .cardStyle()
-    }
-}
-
-struct CalendarDayContentCard: View {
-    let date: Date
     let entries: [DiaryEntry]
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("当日内容").font(.headline)
-            if entries.isEmpty {
-                Text("这一天没有记录").font(.footnote).foregroundStyle(.secondary).padding(.vertical, DiaryStyle.BottomNav.barVerticalPadding)
-            } else {
-                ForEach(entries) { entry in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(entry.title.isEmpty ? "无标题" : entry.title).font(.subheadline.weight(.semibold)).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
-                            Text(entry.entryDate.formatted(.dateTime.month().day())).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        }
-                        Text(entry.content).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
-                    }
-                    .padding(12)
-                    .background(DiaryColor.surfaceSecondary)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-            }
-        }
-        .padding(16)
-        .cardStyle()
-    }
-}
+    let onSelectDate: (Date) -> Void
 
-struct CalendarImageAggregationCard: View {
-    let groupedImages: [(String, [URL])]
-    private let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+    private var monthDays: [Date?] {
+        let cal = Calendar.current
+        guard let monthRange = cal.range(of: .day, in: .month, for: monthAnchor),
+              let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: monthAnchor)) else { return [] }
+
+        let firstWeekday = cal.component(.weekday, from: monthStart)
+        let leading = Array(repeating: Optional<Date>.none, count: max(0, firstWeekday - cal.firstWeekday))
+        let days = monthRange.compactMap { day -> Date? in
+            cal.date(byAdding: .day, value: day - 1, to: monthStart)
+        }
+        return leading + days
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("图片聚合").font(.headline)
-            if groupedImages.isEmpty {
-                Text("该月暂无图片").font(.footnote).foregroundStyle(.secondary).padding(.vertical, 6)
-            } else {
-                ForEach(groupedImages, id: \.0) { group in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(group.0).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        LazyVGrid(columns: columns, spacing: 8) {
-                            ForEach(group.1, id: \.absoluteString) { url in
-                                AsyncImage(url: url) { phase in
-                                    switch phase {
-                                    case .empty:
-                                        RoundedRectangle(cornerRadius: 12).fill(DiaryColor.imagePlaceholder)
-                                    case .success(let image):
-                                        image.resizable().scaledToFill()
-                                    case .failure:
-                                        RoundedRectangle(cornerRadius: 12).fill(DiaryColor.imagePlaceholder).overlay { Image(systemName: "photo") }
-                                    @unknown default:
-                                        EmptyView()
-                                    }
-                                }
-                                .aspectRatio(1, contentMode: .fit)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            HStack {
+                Button { monthAnchor = Calendar.current.date(byAdding: .month, value: -1, to: monthAnchor) ?? monthAnchor } label: {
+                    Image(systemName: "chevron.left")
+                }
+                Spacer()
+                Text(monthAnchor.formatted(.dateTime.year().month(.wide)))
+                    .font(.headline)
+                Spacer()
+                Button { monthAnchor = Calendar.current.date(byAdding: .month, value: 1, to: monthAnchor) ?? monthAnchor } label: {
+                    Image(systemName: "chevron.right")
+                }
+            }
+
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(["日", "一", "二", "三", "四", "五", "六"], id: \.self) { name in
+                    Text(name).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+
+                ForEach(Array(monthDays.enumerated()), id: \.offset) { _, day in
+                    if let day {
+                        let dayEntries = entries.filter { Calendar.current.isDate($0.entryDate, inSameDayAs: day) }
+                        let imageURL = dayEntries.flatMap { $0.extractImageURLs() }.first
+                        let hasRecord = !dayEntries.isEmpty
+                        let targetEntry = dayEntries.sorted { $0.entryDate > $1.entryDate }.first
+
+                        if let targetEntry {
+                            NavigationLink(value: targetEntry) {
+                                calendarCell(day: day, imageURL: imageURL, hasRecord: hasRecord)
                             }
+                            .buttonStyle(.plain)
+                            .simultaneousGesture(TapGesture().onEnded {
+                                selectedDate = day
+                                onSelectDate(day)
+                            })
+                        } else {
+                            Button {
+                                selectedDate = day
+                                onSelectDate(day)
+                            } label: {
+                                calendarCell(day: day, imageURL: imageURL, hasRecord: hasRecord)
+                            }
+                            .buttonStyle(.plain)
                         }
+                    } else {
+                        Color.clear.frame(height: 52)
                     }
                 }
+            }
+
+            if entries.flatMap({ $0.extractImageURLs() }).isEmpty {
+                Text("本月暂无图片，添加带图片链接的日记后会显示在日期格中。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(16)
         .cardStyle()
+    }
+
+    private func calendarCell(day: Date, imageURL: URL?, hasRecord: Bool) -> some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(DiaryColor.surfaceSecondary)
+                .frame(height: 52)
+
+            if let imageURL {
+                AsyncImage(url: imageURL) { phase in
+                    switch phase {
+                    case .empty:
+                        RoundedRectangle(cornerRadius: 10).fill(DiaryColor.imagePlaceholder)
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    case .failure:
+                        RoundedRectangle(cornerRadius: 10).fill(DiaryColor.imagePlaceholder)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+                .frame(height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+
+            Text("\(Calendar.current.component(.day, from: day))")
+                .font(.caption.weight(.bold))
+                .padding(5)
+                .background(.ultraThinMaterial, in: Capsule())
+                .padding(4)
+
+            if hasRecord {
+                Circle().fill(Color.green).frame(width: 6, height: 6).padding(6).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Calendar.current.isDate(day, inSameDayAs: selectedDate) ? DiaryColor.tintStrong : Color.clear, lineWidth: 2)
+        )
     }
 }
 
@@ -780,6 +892,73 @@ struct OnThisDayEntryRow: View {
         .padding(12)
         .background(DiaryColor.surfaceSecondary)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+
+struct LifeYearSection: View {
+    let year: Int
+    let entries: [DiaryEntry]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("\(year)年")
+                    .font(.headline)
+                Spacer()
+                Text("\(entries.count) 条")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(entries.prefix(4)) { entry in
+                HStack(alignment: .top) {
+                    Circle().fill(DiaryColor.tintStrong).frame(width: 8, height: 8).padding(.top, 5)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(entry.title.isEmpty ? "无标题" : entry.title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                        Text(entry.entryDate.formatted(.dateTime.month().day())).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+            }
+        }
+        .padding(16)
+        .cardStyle()
+    }
+}
+
+struct EditEntryView: View {
+    @Environment(\.dismiss) private var dismiss
+    let entry: DiaryEntry
+    let onSave: (String, String, Date, Mood?) -> Void
+
+    @State private var title: String
+    @State private var content: String
+    @State private var date: Date
+
+    init(entry: DiaryEntry, onSave: @escaping (String, String, Date, Mood?) -> Void) {
+        self.entry = entry
+        self.onSave = onSave
+        _title = State(initialValue: entry.title)
+        _content = State(initialValue: entry.content)
+        _date = State(initialValue: entry.entryDate)
+    }
+
+    var body: some View {
+        Form {
+            Section("标题") { TextField("无标题", text: $title) }
+            Section("时间") { DatePicker("", selection: $date).labelsHidden() }
+            Section("内容") { TextEditor(text: $content).frame(minHeight: 180) }
+        }
+        .navigationTitle("编辑记录")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("保存") {
+                    onSave(title, content, date, entry.mood)
+                    dismiss()
+                }
+                .disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
     }
 }
 
@@ -894,6 +1073,14 @@ extension DiaryEntry {
         return detector.matches(in: content, options: [], range: range)
             .compactMap { $0.url }
             .filter { ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"].contains($0.pathExtension.lowercased()) }
+    }
+
+    func extractTags() -> [String] {
+        content.split(whereSeparator: { $0.isWhitespace || $0.isNewline })
+            .map(String.init)
+            .filter { $0.hasPrefix("#") && $0.count > 1 }
+            .map { String($0.dropFirst()).trimmingCharacters(in: .punctuationCharacters) }
+            .filter { !$0.isEmpty }
     }
 }
 
