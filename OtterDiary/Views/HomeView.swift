@@ -65,8 +65,8 @@ struct HomeView: View {
         }
         .sheet(item: $editingEntry) { entry in
             NavigationStack {
-                EditEntryView(entry: entry) { title, content, date, mood, emoji, imageAssetPaths in
-                    viewModel.updateEntry(id: entry.id, title: title, content: content, date: date, mood: mood, emoji: emoji, imageAssetPaths: imageAssetPaths)
+                EditEntryView(entry: entry) { title, content, date, mood, emoji, location, weather, imageAssetPaths in
+                    viewModel.updateEntry(id: entry.id, title: title, content: content, date: date, mood: mood, emoji: emoji, location: location, weather: weather, imageAssetPaths: imageAssetPaths)
                 }
             }
             .presentationDetents([.large])
@@ -547,48 +547,21 @@ struct DiaryTimelineCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .top, spacing: 12) {
+                dateBlock
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(entry.weekdayTimeText)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
                     if let title = entry.displayTitle {
                         Text(title).font(.title3.weight(.bold)).lineLimit(2)
                     }
-                    Text(entry.entryDate.formatted(.dateTime.month(.wide).day().weekday(.wide)))
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-
-                Menu {
-                    Button(action: onEdit) {
-                        Label("编辑", systemImage: "square.and.pencil")
-                    }
-                    Button(role: .destructive) { showingDeleteConfirm = true } label: {
-                        Label("删除", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.body.weight(.bold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 44, height: 44)
-                        .background(DiaryColor.controlBackground)
-                        .clipShape(Circle())
-                }
             }
 
             Text(entry.content).font(.subheadline).lineSpacing(2).lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
-
-            HStack {
-                Spacer()
-                if let emoji = entry.reactionEmoji {
-                    Text(emoji)
-                        .font(.subheadline)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(DiaryColor.controlBackground))
-                        .overlay(Capsule().stroke(DiaryColor.strokeStrong, lineWidth: 1))
-                }
-            }
 
             if let firstImage = entry.primaryDisplayImageURL {
                 AsyncImage(url: firstImage) { phase in
@@ -604,6 +577,23 @@ struct DiaryTimelineCard: View {
                     }
                 }
             }
+
+            HStack(alignment: .center, spacing: 8) {
+                Text(entry.locationWeatherText)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer()
+                if let emoji = entry.reactionEmoji {
+                    Text(emoji)
+                        .font(.subheadline)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(DiaryColor.controlBackground))
+                        .overlay(Capsule().stroke(DiaryColor.strokeStrong, lineWidth: 1))
+                }
+                menuButton
+            }
         }
         .padding(16)
         .cardStyle()
@@ -613,6 +603,41 @@ struct DiaryTimelineCard: View {
         } message: {
             Text("删除后将从时间线移除。")
         }
+    }
+
+    private var dateBlock: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(entry.dayNumberText)
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .monospacedDigit()
+            Text(entry.yearMonthText)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(DiaryColor.controlBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DiaryColor.stroke, lineWidth: 1))
+    }
+
+    private var menuButton: some View {
+        Menu {
+            Button(action: onEdit) { Label("编辑", systemImage: "square.and.pencil") }
+            Button(role: .destructive) { showingDeleteConfirm = true } label: {
+                Label("删除", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
+                .background(DiaryColor.controlBackground)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(DiaryColor.strokeStrong, lineWidth: 1))
+        }
+        .buttonStyle(DiaryPressButtonStyle(minimumSize: 28, cornerRadius: 14, pressedScale: 0.96))
     }
 }
 
@@ -907,22 +932,26 @@ struct LifeYearSection: View {
 struct EditEntryView: View {
     @Environment(\.dismiss) private var dismiss
     let entry: DiaryEntry
-    let onSave: (String, String, Date, Mood?, String?, [String]) -> Void
+    let onSave: (String, String, Date, Mood?, String?, String?, String?, [String]) -> Void
 
     @State private var title: String
     @State private var content: String
     @State private var date: Date
     @State private var emoji: String?
+    @State private var location: String
+    @State private var weather: String
     @State private var imageAssetPaths: [String]
     @State private var pickedPhotoItem: PhotosPickerItem?
 
-    init(entry: DiaryEntry, onSave: @escaping (String, String, Date, Mood?, String?, [String]) -> Void) {
+    init(entry: DiaryEntry, onSave: @escaping (String, String, Date, Mood?, String?, String?, String?, [String]) -> Void) {
         self.entry = entry
         self.onSave = onSave
         _title = State(initialValue: entry.title)
         _content = State(initialValue: entry.content)
         _date = State(initialValue: entry.entryDate)
         _emoji = State(initialValue: entry.emoji)
+        _location = State(initialValue: entry.location ?? "")
+        _weather = State(initialValue: entry.weather ?? "")
         _imageAssetPaths = State(initialValue: entry.imageAssetPaths)
     }
 
@@ -933,6 +962,10 @@ struct EditEntryView: View {
             Section("内容") { TextEditor(text: $content).frame(minHeight: 180) }
             Section("表情") {
                 TextField("emoji", text: Binding(get: { emoji ?? "" }, set: { emoji = $0.isEmpty ? nil : $0 }))
+            }
+            Section("地点与天气") {
+                TextField("地点（如：旧金山）", text: $location)
+                TextField("天气（如：☀️ 52°F）", text: $weather)
             }
             Section("图片") {
                 PhotosPicker(selection: $pickedPhotoItem, matching: .images, photoLibrary: .shared()) {
@@ -971,7 +1004,7 @@ struct EditEntryView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("保存") {
-                    onSave(title, content, date, entry.mood, emoji, imageAssetPaths)
+                    onSave(title, content, date, entry.mood, emoji, location.isEmpty ? nil : location, weather.isEmpty ? nil : weather, imageAssetPaths)
                     dismiss()
                 }
                 .disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -1344,9 +1377,31 @@ extension DiaryEntry {
     var reactionEmoji: String? {
         guard let emoji else { return nil }
         let trimmed = emoji.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("#") { return nil }
+        return trimmed.containsEmoji ? trimmed : nil
     }
 
+    var dayNumberText: String {
+        String(Calendar.current.component(.day, from: entryDate))
+    }
+
+    var yearMonthText: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy/MM"
+        return formatter.string(from: entryDate)
+    }
+
+    var weekdayTimeText: String {
+        entryDate.formatted(.dateTime.locale(Locale(identifier: "zh_CN")).weekday(.abbreviated).hour().minute())
+    }
+
+    var locationWeatherText: String {
+        let place = (location?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "待补充地点"
+        let weatherText = (weather?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "☀️ 52°F"
+        return "📍\(place) · \(weatherText)"
+    }
 
     func extractImageURLs() -> [URL] {
         guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return imageAssetPaths.map { diaryLocalImageURL(for: $0) } }
@@ -1368,6 +1423,13 @@ extension DiaryEntry {
             .filter { $0.hasPrefix("#") && $0.count > 1 }
             .map { String($0.dropFirst()).trimmingCharacters(in: .punctuationCharacters) }
             .filter { !$0.isEmpty }
+    }
+}
+
+
+private extension String {
+    var containsEmoji: Bool {
+        unicodeScalars.contains { $0.properties.isEmojiPresentation || $0.properties.isEmoji }
     }
 }
 

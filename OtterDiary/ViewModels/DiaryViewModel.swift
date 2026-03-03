@@ -24,7 +24,7 @@ final class DiaryViewModel: ObservableObject {
         }
     }
 
-    func addEntry(title: String, content: String, date: Date, mood: Mood?, emoji: String?, imageAssetPaths: [String]) {
+    func addEntry(title: String, content: String, date: Date, mood: Mood?, emoji: String?, location: String? = nil, weather: String? = nil, imageAssetPaths: [String]) {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -34,6 +34,8 @@ final class DiaryViewModel: ObservableObject {
             content: trimmed,
             mood: mood,
             emoji: emoji,
+            location: location?.trimmingCharacters(in: .whitespacesAndNewlines),
+            weather: weather?.trimmingCharacters(in: .whitespacesAndNewlines),
             imageAssetPaths: imageAssetPaths
         )
         entries.insert(entry, at: 0)
@@ -47,7 +49,7 @@ final class DiaryViewModel: ObservableObject {
         persist()
     }
 
-    func updateEntry(id: UUID, title: String, content: String, date: Date, mood: Mood?, emoji: String?, imageAssetPaths: [String]) {
+    func updateEntry(id: UUID, title: String, content: String, date: Date, mood: Mood?, emoji: String?, location: String? = nil, weather: String? = nil, imageAssetPaths: [String]) {
         guard let i = entries.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -57,6 +59,8 @@ final class DiaryViewModel: ObservableObject {
         entries[i].entryDate = date
         entries[i].mood = mood
         entries[i].emoji = emoji
+        entries[i].location = location?.trimmingCharacters(in: .whitespacesAndNewlines)
+        entries[i].weather = weather?.trimmingCharacters(in: .whitespacesAndNewlines)
         entries[i].imageAssetPaths = imageAssetPaths
         entries[i].updatedAt = .now
         persist()
