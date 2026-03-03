@@ -2,27 +2,75 @@ import SwiftUI
 import PhotosUI
 
 struct NewEntryView: View {
+    enum Mode {
+        case create
+        case edit
+
+        var titleText: String {
+            switch self {
+            case .create: return "新建日记"
+            case .edit: return "编辑记录"
+            }
+        }
+
+        var doneText: String {
+            switch self {
+            case .create: return "完成"
+            case .edit: return "保存"
+            }
+        }
+    }
+
     @Environment(\.dismiss) private var dismiss
 
-    @State private var title = ""
-    @State private var content = ""
-    @State private var date = Date()
-    @State private var mood: Mood? = nil
-    @State private var selectedEmoji: String? = nil
-    @State private var imageAssetPaths: [String] = []
-    @State private var pickedPhotoItem: PhotosPickerItem?
+    let mode: Mode
+    let onSave: (_ title: String, _ content: String, _ date: Date, _ mood: Mood?, _ emoji: String?, _ tags: [String], _ location: String?, _ weather: String?, _ imageAssetPaths: [String]) -> Void
 
-    @State private var tags: [String] = ["日常", "旅行"]
-    @State private var newTagText = ""
+    @State private var title: String
+    @State private var content: String
+    @State private var date: Date
+    @State private var mood: Mood? = nil
+    @State private var selectedEmoji: String?
+    @State private var imageAssetPaths: [String]
+    @State private var pickedPhotoItem: PhotosPickerItem?
+    @State private var tags: [String]
+    @State private var newTagText: String = ""
+    @State private var location: String
+    @State private var weather: String
     @State private var showDraftDialog = false
+    @FocusState private var isTagInputFocused: Bool
 
     @AppStorage("draft_title") private var draftTitle: String = ""
     @AppStorage("draft_content") private var draftContent: String = ""
     @AppStorage("draft_timestamp") private var draftTimestamp: Double = 0
 
-    let onSave: (_ title: String, _ content: String, _ date: Date, _ mood: Mood?, _ emoji: String?, _ tags: [String], _ imageAssetPaths: [String]) -> Void
-
     private let emojiOptions = ["😀","😌","🥳","😴","😢","🤩","🔥","🌧️","📚","☕️"]
+
+    init(
+        mode: Mode = .create,
+        initialTitle: String = "",
+        initialContent: String = "",
+        initialDate: Date = Date(),
+        initialMood: Mood? = nil,
+        initialEmoji: String? = nil,
+        initialTags: [String] = [],
+        initialLocation: String? = nil,
+        initialWeather: String? = nil,
+        initialImageAssetPaths: [String] = [],
+        onSave: @escaping (_ title: String, _ content: String, _ date: Date, _ mood: Mood?, _ emoji: String?, _ tags: [String], _ location: String?, _ weather: String?, _ imageAssetPaths: [String]) -> Void
+    ) {
+        self.mode = mode
+        self.onSave = onSave
+        _title = State(initialValue: initialTitle)
+        _content = State(initialValue: initialContent)
+        _date = State(initialValue: initialDate)
+        _mood = State(initialValue: initialMood)
+        _selectedEmoji = State(initialValue: initialEmoji)
+        _tags = State(initialValue: DiaryEntry.normalizedTags(initialTags))
+        _location = State(initialValue: initialLocation ?? "")
+        _weather = State(initialValue: initialWeather ?? "")
+        _imageAssetPaths = State(initialValue: initialImageAssetPaths)
+    }
 
     private var hasUnsavedChanges: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
@@ -54,6 +102,10 @@ struct NewEntryView: View {
                 }
                 .scrollIndicators(.hidden)
                 .scrollBounceBehavior(.basedOnSize)
+                .onTapGesture {
+                    commitPendingTagInput()
+                    isTagInputFocused = false
+                }
             }
         }
         .onAppear(perform: restoreDraftIfNeeded)
@@ -65,6 +117,11 @@ struct NewEntryView: View {
                     await MainActor.run { imageAssetPaths.append(path) }
                 }
                 await MainActor.run { pickedPhotoItem = nil }
+            }
+        }
+        .onChange(of: isTagInputFocused) { _, focused in
+            if !focused {
+                commitPendingTagInput()
             }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
@@ -112,7 +169,7 @@ struct NewEntryView: View {
             .buttonStyle(DiaryPressButtonStyle(minimumSize: 44, cornerRadius: 22))
 
             Spacer()
-            Text("新建日记").font(.title3.weight(.heavy))
+            Text(mode.titleText).font(.title3.weight(.heavy))
             Spacer()
             Color.clear.frame(width: 44, height: 44)
         }
@@ -179,9 +236,25 @@ struct NewEntryView: View {
             .scrollIndicators(.hidden)
 
             TextField("添加标签（如 #学习）", text: $newTagText)
+                .focused($isTagInputFocused)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .onSubmit(addTagFromInput)
+                .submitLabel(.done)
+                .onSubmit(commitPendingTagInput)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(DiaryColor.controlBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DiaryColor.strokeStrong, lineWidth: 1))
+
+            TextField("地点（可选）", text: $location)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(DiaryColor.controlBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DiaryColor.strokeStrong, lineWidth: 1))
+
+            TextField("天气（可选）", text: $weather)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .background(DiaryColor.controlBackground)
@@ -210,11 +283,22 @@ struct NewEntryView: View {
             }
             Spacer()
             Button {
-                onSave(title, content, date, mood, selectedEmoji, tags, imageAssetPaths)
+                commitPendingTagInput()
+                onSave(
+                    title,
+                    content,
+                    date,
+                    mood,
+                    selectedEmoji,
+                    tags,
+                    location.trimmedToNil,
+                    weather.trimmedToNil,
+                    imageAssetPaths
+                )
                 clearDraft()
                 dismiss()
             } label: {
-                Text("完成")
+                Text(mode.doneText)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 24)
@@ -254,12 +338,17 @@ struct NewEntryView: View {
         .buttonStyle(DiaryPressButtonStyle(cornerRadius: 16, pressedScale: 0.97))
     }
 
-    private func addTagFromInput() {
-        let cleaned = newTagText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
-        guard !cleaned.isEmpty else { return }
-        guard !tags.contains(cleaned) else { newTagText = ""; return }
-        tags.append(cleaned)
+    private func commitPendingTagInput() {
+        addNormalizedTag(newTagText)
         newTagText = ""
+    }
+
+    private func addNormalizedTag(_ raw: String) {
+        let cleaned = DiaryEntry.normalizeTag(raw)
+        guard !cleaned.isEmpty else { return }
+        let lowercasedSet = Set(tags.map { $0.lowercased() })
+        guard !lowercasedSet.contains(cleaned.lowercased()) else { return }
+        tags.append(cleaned)
     }
 
     private func saveDraft() {
@@ -275,12 +364,14 @@ struct NewEntryView: View {
     }
 
     private func restoreDraftIfNeeded() {
+        guard mode == .create else { return }
         guard !draftContent.isEmpty || !draftTitle.isEmpty else { return }
         if title.isEmpty && content.isEmpty {
             title = draftTitle
             content = draftContent
         }
     }
+
     private func savePickedImageData(_ data: Data) throws -> String {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
         let dir = docs.appendingPathComponent("entry-images", isDirectory: true)
@@ -296,5 +387,11 @@ struct NewEntryView: View {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
         return docs.appendingPathComponent(relativePath)
     }
+}
 
+private extension String {
+    var trimmedToNil: String? {
+        let value = trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
 }

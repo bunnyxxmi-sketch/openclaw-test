@@ -53,8 +53,8 @@ struct HomeView: View {
         .animation(DiaryStyle.Motion.selectionSpring, value: selectedDiaryTab)
         .sheet(isPresented: $showingNewEntry) {
             NavigationStack {
-                NewEntryView { title, content, date, mood, emoji, tags, imageAssetPaths in
-                    viewModel.addEntry(title: title, content: content, date: date, mood: mood, emoji: emoji, tags: tags, imageAssetPaths: imageAssetPaths)
+                NewEntryView(mode: .create) { title, content, date, mood, emoji, tags, location, weather, imageAssetPaths in
+                    viewModel.addEntry(title: title, content: content, date: date, mood: mood, emoji: emoji, tags: tags, location: location, weather: weather, imageAssetPaths: imageAssetPaths)
                     selectedBottomTab = .diary
                     selectedDiaryTab = .timeline
                     timelineTopToken = UUID()
@@ -65,7 +65,18 @@ struct HomeView: View {
         }
         .sheet(item: $editingEntry) { entry in
             NavigationStack {
-                EditEntryView(entry: entry) { title, content, date, mood, emoji, tags, location, weather, imageAssetPaths in
+                NewEntryView(
+                    mode: .edit,
+                    initialTitle: entry.title,
+                    initialContent: entry.content,
+                    initialDate: entry.entryDate,
+                    initialMood: entry.mood,
+                    initialEmoji: entry.emoji,
+                    initialTags: entry.displayTags,
+                    initialLocation: entry.location,
+                    initialWeather: entry.weather,
+                    initialImageAssetPaths: entry.imageAssetPaths
+                ) { title, content, date, mood, emoji, tags, location, weather, imageAssetPaths in
                     viewModel.updateEntry(id: entry.id, title: title, content: content, date: date, mood: mood, emoji: emoji, tags: tags, location: location, weather: weather, imageAssetPaths: imageAssetPaths)
                 }
             }
