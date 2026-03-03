@@ -29,9 +29,9 @@ struct HomeView: View {
                     onSearch: { showingSearchHint = true },
                     onSettings: { showingSettings = true }
                 )
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 10)
+                .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
+                .padding(.top, DiaryStyle.TopBar.topPadding)
+                .padding(.bottom, DiaryStyle.TopBar.bottomPadding)
 
                 contentArea
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -41,7 +41,7 @@ struct HomeView: View {
             DiaryBottomNav(selected: $selectedBottomTab) {
                 showingNewEntry = true
             }
-            .safeAreaPadding(.bottom, 4)
+            .safeAreaPadding(.bottom, DiaryStyle.BottomNav.bottomPadding)
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.88), value: selectedBottomTab)
         .animation(.easeInOut(duration: 0.2), value: selectedDiaryTab)
@@ -97,12 +97,12 @@ struct HomeView: View {
     }
 
     private var diaryHome: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: DiaryStyle.Spacing.sectionGap) {
             DiarySecondaryTabs(selected: $selectedDiaryTab)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
 
             ScrollView {
-                VStack(spacing: 12) {
+                VStack(spacing: DiaryStyle.Spacing.sectionGap) {
                     switch selectedDiaryTab {
                     case .timeline:
                         if viewModel.visibleEntries.isEmpty {
@@ -121,9 +121,9 @@ struct HomeView: View {
                         comingSoonCard
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 2)
-                .padding(.bottom, 120)
+                .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
+                .padding(.top, DiaryStyle.Spacing.contentTop)
+                .padding(.bottom, DiaryStyle.Spacing.bottomSafe)
             }
             .scrollIndicators(.hidden)
         }
@@ -148,7 +148,7 @@ struct HomeView: View {
             }
         }()
 
-        return VStack(spacing: 12) {
+        return VStack(spacing: DiaryStyle.Spacing.sectionGap) {
             OnThisDayDateNavigatorCard(selectedDate: $selectedDate)
             OnThisDayFilterCard(mode: $onThisDayMode)
             OnThisDayEntriesCard(title: onThisDayMode == .lastYear ? "去年今日" : "近五年", entries: entries)
@@ -156,7 +156,7 @@ struct HomeView: View {
     }
 
     private var comingSoonCard: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: DiaryStyle.Spacing.sectionGap) {
             Image(systemName: "clock.badge")
                 .font(.system(size: 22))
                 .foregroundStyle(.secondary)
@@ -173,28 +173,28 @@ struct HomeView: View {
 
     private var calendarPage: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: DiaryStyle.Spacing.sectionGap) {
                 CalendarDateBrowserCard(selectedDate: $selectedCalendarDate)
                 CalendarDayContentCard(date: selectedCalendarDate, entries: entries(on: selectedCalendarDate))
                 CalendarImageAggregationCard(groupedImages: groupedImagesByMonth)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 120)
-            .padding(.top, 2)
+            .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
+            .padding(.bottom, DiaryStyle.Spacing.bottomSafe)
+            .padding(.top, DiaryStyle.Spacing.contentTop)
         }
         .scrollIndicators(.hidden)
     }
 
     private var profilePage: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: DiaryStyle.Spacing.sectionGap) {
                 ProfileSummaryCard(entriesCount: viewModel.visibleEntries.count, imageCount: viewModel.allImageURLs.count) {
                     showingSettings = true
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 120)
-            .padding(.top, 2)
+            .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
+            .padding(.bottom, DiaryStyle.Spacing.bottomSafe)
+            .padding(.top, DiaryStyle.Spacing.contentTop)
         }
     }
 
@@ -306,14 +306,12 @@ struct DiaryTopHeader: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            chromeIconButton(systemName: "square.grid.2x2") {
-                onMenu()
-            }
+            chromeIconButton(systemName: "square.grid.2x2") { onMenu() }
 
             Spacer(minLength: 8)
 
             Text(title)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.system(size: DiaryStyle.TopBar.titleSize, weight: .heavy, design: .rounded))
 
             Spacer(minLength: 8)
 
@@ -322,6 +320,7 @@ struct DiaryTopHeader: View {
                 chromeIconButton(systemName: "gearshape", action: onSettings)
             }
         }
+        .frame(height: 48)
     }
 
     private func chromeIconButton(systemName: String, action: @escaping () -> Void) -> some View {
@@ -329,7 +328,7 @@ struct DiaryTopHeader: View {
             Image(systemName: systemName)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(.primary)
-                .frame(width: 36, height: 36)
+                .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
                 .background(.white)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
@@ -351,10 +350,10 @@ struct DiarySecondaryTabs: View {
                         }
                     } label: {
                         Text(tab.title)
-                            .font(.system(size: 15, weight: selected == tab ? .bold : .semibold))
+                            .font(.system(size: 15, weight: selected == tab ? .heavy : .medium))
                             .foregroundStyle(selected == tab ? .white : .secondary)
-                            .padding(.horizontal, 14)
-                            .frame(height: 34)
+                            .padding(.horizontal, DiaryStyle.SecondaryTab.horizontalPadding)
+                            .frame(height: DiaryStyle.SecondaryTab.height)
                             .background(
                                 Capsule(style: .continuous)
                                     .fill(selected == tab ? Color.black : Color.clear)
@@ -396,7 +395,7 @@ struct DiaryBottomNav: View {
                         }
                         .foregroundStyle(selected == tab ? .primary : .secondary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, DiaryStyle.BottomNav.barVerticalPadding)
                         .background {
                             if selected == tab {
                                 Capsule(style: .continuous)
@@ -421,16 +420,16 @@ struct DiaryBottomNav: View {
                 Image(systemName: "plus")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(.white)
-                    .frame(width: 56, height: 56)
+                    .frame(width: DiaryStyle.BottomNav.fabSize, height: DiaryStyle.BottomNav.fabSize)
                     .background(Color.black)
                     .clipShape(Circle())
-                    .shadow(color: .black.opacity(0.22), radius: 14, y: 8)
+                    .shadow(color: DiaryStyle.Shadow.fabColor, radius: DiaryStyle.Shadow.fabRadius, y: DiaryStyle.Shadow.fabY)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("新建日记")
         }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 10)
+        .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
+        .padding(.bottom, DiaryStyle.BottomNav.bottomPadding)
     }
 }
 
@@ -439,19 +438,16 @@ struct DiaryTimelineCard: View {
     let onDelete: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.entryDate, format: .dateTime.day())
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                    Text(entry.entryDate.formatted(.dateTime.year().month()))
-                        .font(.subheadline)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(entry.title.isEmpty ? "无标题" : entry.title)
+                        .font(.title3.weight(.bold))
+                        .lineLimit(1)
+                    Text(entry.entryDate.formatted(.dateTime.month(.wide).day().weekday(.wide)))
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
-
-                Text(entry.entryDate.formatted(.dateTime.weekday(.wide)))
-                    .font(.title3.weight(.bold))
-                    .padding(.leading, 4)
 
                 Spacer()
 
@@ -470,29 +466,30 @@ struct DiaryTimelineCard: View {
             }
 
             Text(entry.content)
-                .font(.body)
-                .lineSpacing(3)
+                .font(.subheadline)
+                .lineSpacing(2)
+                .lineLimit(4)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if let firstImage = entry.extractImageURLs().first {
                 AsyncImage(url: firstImage) { phase in
                     switch phase {
                     case .empty:
-                        RoundedRectangle(cornerRadius: 16)
+                        RoundedRectangle(cornerRadius: DiaryStyle.Radius.media)
                             .fill(Color(hex: 0xF3F4F6))
-                            .frame(height: 230)
+                            .aspectRatio(4 / 3, contentMode: .fit)
                             .overlay { ProgressView() }
                     case .success(let image):
                         image
                             .resizable()
                             .scaledToFill()
-                            .frame(height: 230)
+                            .aspectRatio(4 / 3, contentMode: .fit)
                             .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: DiaryStyle.Radius.media, style: .continuous))
                     case .failure:
-                        RoundedRectangle(cornerRadius: 16)
+                        RoundedRectangle(cornerRadius: DiaryStyle.Radius.media)
                             .fill(Color(hex: 0xF3F4F6))
-                            .frame(height: 230)
+                            .aspectRatio(4 / 3, contentMode: .fit)
                             .overlay { Image(systemName: "photo") }
                     @unknown default:
                         EmptyView()
@@ -519,7 +516,7 @@ struct DiaryTimelineCard: View {
 
 struct DiaryEmptyCard: View {
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: DiaryStyle.Spacing.sectionGap) {
             Image(systemName: "book.closed")
                 .font(.system(size: 28))
                 .foregroundStyle(.secondary)
@@ -571,7 +568,7 @@ struct CalendarDayContentCard: View {
                 Text("这一天没有记录")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, DiaryStyle.BottomNav.barVerticalPadding)
             } else {
                 ForEach(entries) { entry in
                     VStack(alignment: .leading, spacing: 8) {
@@ -756,7 +753,7 @@ struct OnThisDayEntriesCard: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
-                VStack(spacing: 10) {
+                VStack(spacing: DiaryStyle.Spacing.sectionGap) {
                     ForEach(entries) { entry in
                         OnThisDayEntryRow(entry: entry)
                     }
@@ -813,7 +810,7 @@ struct ProfileSummaryCard: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, DiaryStyle.BottomNav.barVerticalPadding)
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.black, lineWidth: 2))
             }
 
@@ -925,18 +922,73 @@ extension DiaryEntry {
     }
 }
 
-extension View {
-    func cardStyle() -> some View {
-        self
+
+enum DiaryStyle {
+    enum Spacing {
+        static let pageHorizontal: CGFloat = 20
+        static let sectionGap: CGFloat = 14
+        static let contentTop: CGFloat = 6
+        static let bottomSafe: CGFloat = 124
+    }
+
+    enum Radius {
+        static let card: CGFloat = 22
+        static let control: CGFloat = 14
+        static let media: CGFloat = 16
+    }
+
+    enum Shadow {
+        static let cardColor = Color.black.opacity(0.06)
+        static let cardRadius: CGFloat = 12
+        static let cardY: CGFloat = 6
+
+        static let fabColor = Color.black.opacity(0.2)
+        static let fabRadius: CGFloat = 12
+        static let fabY: CGFloat = 7
+    }
+
+    enum TopBar {
+        static let iconSize: CGFloat = 40
+        static let titleSize: CGFloat = 32
+        static let horizontalPadding: CGFloat = 20
+        static let topPadding: CGFloat = 8
+        static let bottomPadding: CGFloat = 12
+    }
+
+    enum SecondaryTab {
+        static let height: CGFloat = 36
+        static let horizontalPadding: CGFloat = 16
+    }
+
+    enum BottomNav {
+        static let fabSize: CGFloat = 58
+        static let barVerticalPadding: CGFloat = 8
+        static let bottomPadding: CGFloat = 8
+    }
+}
+
+struct DiaryCardModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: DiaryStyle.Radius.card, style: .continuous)
                     .fill(.white)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: DiaryStyle.Radius.card, style: .continuous)
                             .stroke(Color.black.opacity(0.04), lineWidth: 1)
                     )
             )
-            .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
+            .shadow(
+                color: DiaryStyle.Shadow.cardColor,
+                radius: DiaryStyle.Shadow.cardRadius,
+                y: DiaryStyle.Shadow.cardY
+            )
+    }
+}
+
+extension View {
+    func cardStyle() -> some View {
+        modifier(DiaryCardModifier())
     }
 }
 

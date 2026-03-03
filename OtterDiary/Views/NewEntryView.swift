@@ -21,24 +21,24 @@ struct NewEntryView: View {
 
             VStack(spacing: 0) {
                 topBar
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
                     .padding(.top, 10)
-                    .padding(.bottom, 10)
+                    .padding(.bottom, DiaryStyle.TopBar.bottomPadding)
 
                 ScrollView {
                     contentCard
-                        .padding(.horizontal, 16)
-                        .padding(.top, 6)
-                        .padding(.bottom, 120)
+                        .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
+                        .padding(.top, DiaryStyle.Spacing.contentTop)
+                        .padding(.bottom, DiaryStyle.Spacing.bottomSafe)
                 }
                 .scrollIndicators(.hidden)
             }
         }
         .safeAreaInset(edge: .bottom) {
             bottomToolbar
-                .padding(.horizontal, 16)
+                .padding(.horizontal, DiaryStyle.Spacing.pageHorizontal)
                 .padding(.top, 10)
-                .padding(.bottom, 6)
+                .padding(.bottom, DiaryStyle.BottomNav.bottomPadding)
                 .background(.ultraThinMaterial)
         }
         .alert("功能开发中", isPresented: $showPlaceholderHint) {
@@ -56,7 +56,7 @@ struct NewEntryView: View {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
+                    .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
                     .background(.white)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(Color.black.opacity(0.05), lineWidth: 1))
@@ -65,7 +65,7 @@ struct NewEntryView: View {
             Spacer()
 
             Text("新建日记")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: 19, weight: .heavy, design: .rounded))
 
             Spacer()
 
@@ -75,7 +75,7 @@ struct NewEntryView: View {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
+                    .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
                     .background(.white)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(Color.black.opacity(0.05), lineWidth: 1))
@@ -107,9 +107,9 @@ struct NewEntryView: View {
                         .padding(.vertical, 8)
                         .frame(minHeight: 240)
                         .background(Color(hex: 0xF9FAFB))
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: DiaryStyle.Radius.control, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: DiaryStyle.Radius.control, style: .continuous)
                                 .stroke(Color.black.opacity(0.06), lineWidth: 1)
                         )
 
@@ -142,9 +142,9 @@ struct NewEntryView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 130)
                     .background(Color(hex: 0xFCFCFD))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: DiaryStyle.Radius.media, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        RoundedRectangle(cornerRadius: DiaryStyle.Radius.media, style: .continuous)
                             .stroke(
                                 Color(hex: 0xD1D5DB),
                                 style: StrokeStyle(lineWidth: 1.2, dash: [6, 6])
@@ -183,15 +183,15 @@ struct NewEntryView: View {
                     )
             }
         }
-        .padding(18)
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: DiaryStyle.Radius.card, style: .continuous)
                 .fill(.white)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    RoundedRectangle(cornerRadius: DiaryStyle.Radius.card, style: .continuous)
                         .stroke(Color.black.opacity(0.04), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.06), radius: 14, y: 8)
+                .shadow(color: DiaryStyle.Shadow.cardColor, radius: DiaryStyle.Shadow.cardRadius, y: DiaryStyle.Shadow.cardY)
         )
     }
 
@@ -213,10 +213,10 @@ struct NewEntryView: View {
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 24)
-                    .frame(height: 48)
+                    .frame(height: 50)
                     .background(Color.black)
                     .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
+                    .shadow(color: DiaryStyle.Shadow.fabColor, radius: DiaryStyle.Shadow.fabRadius, y: DiaryStyle.Shadow.fabY)
             }
             .disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .opacity(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
@@ -230,7 +230,7 @@ struct NewEntryView: View {
             Image(systemName: systemName)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(.primary)
-                .frame(width: 40, height: 40)
+                .frame(width: DiaryStyle.TopBar.iconSize, height: DiaryStyle.TopBar.iconSize)
                 .background(.white)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
